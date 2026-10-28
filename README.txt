@@ -24,11 +24,11 @@ python3 -m http.server 8880 --directory docs --bind 127.0.0.1
 تغيير العنوان لا ينقلها تلقائيًا. الموقع السابق ما زال يحتفظ بعلاماته، ما لم يمسح المستخدم بيانات المتصفح.
 يمكن تصدير سجل القراءة والمحفوظات معًا من صفحة «نقل بياناتي» في الموقع السابق، ثم استيراد الملف في الصفحة نفسها على العنوان الجديد.
 الموقع السابق: https://egyptian-industrial-articles-reading.daring-moss-9997.chatgpt.site/profile.html
-الموقع الجديد: https://n1ght-w0lf.github.io/egyptian-industrial-library/profile.html
+الموقع الجديد: https://egyptian-industrial-library.github.io/profile.html
 
 التحديث من Drive:
 لم تُفعّل أي متابعة أسبوعية في هذه النسخة. تحتاج اتصال قراءة دائم بالمجلد ومهمة استيراد مستقلة، ولا يكفي تشغيل Pages وحده.
 أي إضافة لاحقة ينبغي أن تحتفظ بمعرفات المقالات القائمة لتظل علامات القراءة والحفظ مرتبطة بها.
 
 مصدر النسخة: الموقع الحالي، مع أداة نقل سجل القراءة والمحفوظات.
-الرابط العام: https://n1ght-w0lf.github.io/egyptian-industrial-library/
+الرابط العام: https://egyptian-industrial-library.github.io/

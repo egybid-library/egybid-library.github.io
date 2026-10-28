@@ -1,0 +1,26 @@
+{
+  "sourceFiles": 1991,
+  "articles": 1950,
+  "readableArticles": 1950,
+  "categories": 13,
+  "embeddedImages": 8,
+  "errors": [],
+  "fileTypes": {
+    "docx": 1990,
+    "png": 1
+  },
+  "notes": [
+    "الفقرات محفوظة بترتيبها بما فيها فقرات الجداول؛ لم يُعد إنتاج تصميم Word",
+    "الملف -.docx محفوظ كمادة واحدة متنوّعة، دون تقسيم تحريري تخميني",
+    "تواريخ Word بيانات تقنية وليست تواريخ نشر مؤكدة",
+    "الموقع يعرض 1950 مقالًا ذا نص فقط؛ استُبعدت 40 نسخة فارغة من العرض والبحث والتصنيفات. ملفات المصدر المحلية محفوظة."
+  ],
+  "textArticles": 1950,
+  "imageOnlyArticles": 0,
+  "emptyDocuments": 0,
+  "excludedSources": {
+    "total": 40,
+    "zeroByteFiles": 39,
+    "documentsWithoutContent": 1
+  }
+}

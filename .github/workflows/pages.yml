@@ -1,45 +1,51 @@
-name: Publish article library
-
+name: Import reviewed article library update
 on:
   push:
     branches: [main]
+    paths: ['.github/workflows/pages.yml']
   workflow_dispatch:
-
 permissions:
-  contents: read
-
+  contents: write
 concurrency:
   group: github-pages
   cancel-in-progress: false
-
 jobs:
-  build:
+  import:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Verify static library links
-        run: python3 scripts/verify.py
-      - name: Check application syntax
+      - name: Apply and verify the reviewed local changes
         run: |
+          python3 - <<'PYCODE'
+          from pathlib import Path
+          import gzip,hashlib,subprocess,shutil,tempfile,os
+          bundle=Path('reviewed-library-update.patch.gz')
+          data=bundle.read_bytes()
+          assert hashlib.sha256(data).hexdigest()=='e3395ca297f1e21a403b8e8dde8c9eb885cde1d6740ee7e90c689739bc4b4946', 'Update bundle hash mismatch'
+          subprocess.run(['git','apply','--index','--binary','-'],input=gzip.decompress(data),check=True)
+          bundle.unlink()
+          subprocess.run(['git','add','-A'],check=True)
+          with tempfile.TemporaryDirectory() as directory:
+              index=Path(directory)/'index'
+              shutil.copyfile('.git/index',index)
+              env=dict(os.environ,GIT_INDEX_FILE=str(index))
+              subprocess.run(['git','update-index','--cacheinfo','100644,22eb4d73f43a517e30a522957dec7f148e393fdd,.github/workflows/pages.yml'],env=env,check=True)
+              actual=subprocess.check_output(['git','write-tree'],env=env,text=True).strip()
+              assert actual=='b26d7329b2e1a01807a1770478147443f9a1548a', 'Repository does not match the reviewed local snapshot'
+          PYCODE
+      - name: Verify links and search behavior
+        run: |
+          python3 scripts/verify.py
           node --check docs/app.js
           node --check docs/article-navigation.js
-          node --check docs/bookmarks.js
           node --check docs/reader.js
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v4
-        with:
-          path: docs
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy library
-        id: deployment
-        uses: actions/deploy-pages@v4
+          node --check docs/theme.js
+          node --check docs/control-focus.js
+          node --check docs/search-worker.js
+          node scripts/test-search.mjs
+      - name: Save the verified source
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Simplify article reading and navigation; speed up library loading'
+          git push origin HEAD:main

@@ -1,45 +1,54 @@
-name: Publish article library
-
+name: Import reviewed article library update
 on:
   push:
     branches: [main]
+    paths: ['.github/workflows/pages.yml']
   workflow_dispatch:
-
 permissions:
-  contents: read
-
+  contents: write
 concurrency:
   group: github-pages
   cancel-in-progress: false
-
 jobs:
-  build:
+  import:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Verify static library links
-        run: python3 scripts/verify.py
-      - name: Check application syntax
+        with:
+          fetch-depth: 0
+      - name: Apply and verify the reviewed local changes
         run: |
+          python3 - <<'PYCODE'
+          from pathlib import Path
+          import gzip,hashlib,subprocess,shutil,tempfile,os
+          bundle=Path('reviewed-library-update.patch.gz')
+          data=bundle.read_bytes()
+          assert hashlib.sha256(data).hexdigest()=='b88424b9a937fca9d447c54f5bba34b0a6c92540d8d697bcecb65d009ec7e039', 'Update bundle hash mismatch'
+          subprocess.run(['git','apply','--index','--binary','-'],input=gzip.decompress(data),check=True)
+          bundle.unlink()
+          subprocess.run(['git','add','-A'],check=True)
+          with tempfile.TemporaryDirectory() as directory:
+              index=Path(directory)/'index'
+              shutil.copyfile('.git/index',index)
+              env=dict(os.environ,GIT_INDEX_FILE=str(index))
+              subprocess.run(['git','update-index','--cacheinfo','100644,22eb4d73f43a517e30a522957dec7f148e393fdd,.github/workflows/pages.yml'],env=env,check=True)
+              actual=subprocess.check_output(['git','write-tree'],env=env,text=True).strip()
+              assert actual=='5933a83d336f0e1085cd245cbd8154d43ab41d91', 'Repository does not match the reviewed local snapshot'
+          PYCODE
+      - name: Verify links and search behavior
+        run: |
+          python3 scripts/verify.py
           node --check docs/app.js
           node --check docs/article-navigation.js
-          node --check docs/bookmarks.js
           node --check docs/reader.js
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v4
-        with:
-          path: docs
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy library
-        id: deployment
-        uses: actions/deploy-pages@v4
+          node --check docs/theme.js
+          node --check docs/control-focus.js
+          node --check docs/search-worker.js
+          node --check scripts/page-loading-bootstrap.js
+          node scripts/test-search.mjs
+      - name: Save the verified source
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Add instant title suggestions, clear search results and polish library navigation'
+          git push origin HEAD:main

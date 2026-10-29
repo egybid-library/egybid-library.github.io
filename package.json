@@ -3,6 +3,7 @@
   "type": "module",
   "scripts": {
     "build:search": "node scripts/build-search.mjs",
-    "test": "node scripts/test-search.mjs"
+    "test": "node scripts/test-search.mjs",
+    "test:offline": "node scripts/test-offline.mjs"
   }
 }

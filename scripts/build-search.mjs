@@ -54,7 +54,7 @@ write(prefix+'routes.json',sortedCounts);
 const collator=new Intl.Collator('ar'),number=new Intl.NumberFormat('ar-EG');
 const initial=[...archive].sort((a,b)=>{
  if(!a.publicationDate||!b.publicationDate)return Number(Boolean(b.publicationDate))-Number(Boolean(a.publicationDate))||collator.compare(a.title,b.title);
- return b.publicationDate.localeCompare(a.publicationDate)||collator.compare(a.title,b.title);
+ return b.publicationDate.localeCompare(a.publicationDate)||collator.compare(b.title,a.title);
 }).slice(0,20);
 const initialExcerpts=Object.fromEntries(initial.map(a=>[a.id,a.excerpt]));
 const excerptVersion=hash(JSON.stringify(archive.map(a=>[a.id,a.excerpt])));
@@ -72,7 +72,7 @@ for(const name of ['index.html','reading.html','bookmarks.html']){
  const embedded='<script id="library-data" type="application/json">'+dataJSON.replace(/</g,'\\u003c')+'</script>';
  html=html.replace(/<script (?:defer )?src="reading-state\.js/,embedded+'<script defer src="reading-state.js');
  if(name==='index.html'){
-  html=html.replace(/<form id="searchform"[\s\S]*?<\/form>/,'<form id="searchform" class="search-panel" role="search"><div class="main-query-field"><label class="sr-only" for="query">البحث في المكتبة</label><div class="search"><span class="search-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></span><input id="query" type="search" placeholder="ابحث عن عنوان مقال…" autocomplete="off"><button type="button" id="clear" hidden>مسح</button></div></div><button type="submit" class="full-search-submit">بحث في العنوان والمحتوى</button></form>');
+  html=html.replace(/<form id="searchform"[\s\S]*?<\/form>/,'<form id="searchform" class="search-panel" role="search"><div class="main-query-field"><label class="sr-only" for="query">البحث في المكتبة</label><div class="search"><span class="search-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></span><input id="query" type="search" placeholder="ابحث عن مقال…" autocomplete="off"><button type="button" id="clear" aria-label="مسح البحث" title="مسح البحث" hidden><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15"/></svg></button></div></div></form>');
   const start=html.indexOf('<div id="cards" class="cards">'),end=html.indexOf('<div id="pages"',start);
   html=html.slice(0,start)+'<div id="cards" class="cards">'+firstCards+'</div>'+html.slice(end);
   html=html.replace(/(<p id="count"[^>]*>)[\s\S]*?<\/p>/,'$1'+number.format(archive.length)+' مقالًا في المكتبة</p>');
@@ -121,3 +121,5 @@ for(const name of ['index.html','reading.html','bookmarks.html']){
  const file=path.join(root,name);fs.writeFileSync(file,fs.readFileSync(file,'utf8').replace(/app\.js\?v=[^" ]+/g,'app.js?v='+appVersion));
 }
 console.log(JSON.stringify({articles:archive.length,embeddedDataBytes:Buffer.byteLength(dataJSON),embeddedDataGzip:gzipSync(dataJSON).length,routesGzip:gzipSync(JSON.stringify(sortedCounts)).length,longShardAverageGzip:Math.round(wireBytes/512),longShardMaxGzip:maxWire,initialCards:initial.length,version},null,2));
+
+await import('./build-offline.mjs');

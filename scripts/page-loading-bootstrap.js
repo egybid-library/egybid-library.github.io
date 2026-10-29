@@ -23,6 +23,8 @@
    // Newly rendered cards and snippets can need additional font subsets.
    void document.body.offsetWidth;
    const images=[...document.images].filter(image=>!image.closest('[hidden]'));
+   // The page is hidden by the loader, so lazy images cannot start on their own.
+   for(const image of images)if(image.loading==='lazy')image.loading='eager';
    await Promise.all(images.map(image=>image.decode?image.decode().catch(()=>{}):Promise.resolve()));
    if(document.fonts)await document.fonts.ready;
    await new Promise(requestAnimationFrame);

@@ -18,7 +18,7 @@
   if(sort==='short')return a.minutes-b.minutes||title;
   if(sort==='long')return b.minutes-a.minutes||title;
   if(!a.publicationDate||!b.publicationDate)return Number(Boolean(b.publicationDate))-Number(Boolean(a.publicationDate))||title;
-  return (sort==='newest'?b.publicationDate.localeCompare(a.publicationDate):a.publicationDate.localeCompare(b.publicationDate))||title;
+  return (sort==='newest'?b.publicationDate.localeCompare(a.publicationDate):a.publicationDate.localeCompare(b.publicationDate))||(sort==='newest'?-title:title);
  }
  function articleHref(article,sort,query='',readingFilter){return sitePath('articles/'+article.id+'.html')+'?nav-sort='+sort+(query?'&nav-q='+encodeURIComponent(query):'')+(readingFilter?'&nav-reading='+readingFilter:'');}
  const navigationStateKey='egyptian-industrial-library:navigation-state:v1';

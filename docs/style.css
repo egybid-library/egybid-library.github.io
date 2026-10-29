@@ -1,4 +1,6 @@
-/* Self-hosted Google Fonts; licenses in assets/fonts/. */
+/* Self-hosted Google Fonts; licenses in assets/fonts/.
+   Content is revealed after used fonts settle; see build-search.mjs.
+   The regular/semibold Arabic UI faces are preloaded by build-search.mjs. */
 /* arabic */
 @font-face {
   font-family: 'IBM Plex Sans Arabic';
@@ -466,7 +468,7 @@
 @media(max-width:680px){.official-links>span{width:100%}.site-footer .footer-disclaimer{font-size:12px}.official-links{gap:0 8px}}
 .article-reading-controls a{display:inline-flex;align-items:center;min-height:44px;padding-block:8px}
 .reader>.meta{padding-bottom:0;border-bottom:0;gap:10px}
-.reader>.article-reading-controls{gap:10px;margin:16px 0 0;padding-bottom:20px;border-bottom:1px solid var(--line)}
+.reader>.article-reading-controls{gap:10px;margin:28px 0 0;padding-top:20px;border-top:1px solid var(--line)}
 .folder-tree :is(a,button):focus-visible{outline-offset:-3px}
 @media(max-width:680px){.toolbar{gap:14px 18px}.search input{font-size:16px}.reading-tabs{gap:8px}.article-reading-controls{gap:12px}}
 @media(forced-colors:active){:root :is(.search-options,.toolbar,.navigation-sort,.sidebar-reading-filter) select{appearance:auto;-webkit-appearance:auto;background-image:none;padding-inline:14px}}
@@ -612,3 +614,7 @@
 @media(forced-colors:active){:root select:focus-visible{outline-color:Highlight}}
 
 :root[data-input-method="pointer"] select:focus{outline:none}
+
+/* Cards render from the document; excerpts on other pages fill in independently. */
+:root[data-library-pending] :is(#cards,#count){visibility:hidden}
+.card-link>p.excerpt-pending{min-height:4em;border-radius:4px;background:linear-gradient(var(--line),var(--line)) right 0 top 12px/85% 7px no-repeat,linear-gradient(var(--line),var(--line)) right 0 top 30px/65% 7px no-repeat;opacity:.4}

@@ -10,7 +10,7 @@
  const chevron='<svg class="folder-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m10 4-4 4 4 4"/></svg>';
  const normalize=value=>value.normalize('NFKD').replace(/[\u064B-\u065F\u0670\u0640\u0300-\u036f]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/[٠-٩]/g,d=>String(d.charCodeAt(0)-1632)).replace(/[۰-۹]/g,d=>String(d.charCodeAt(0)-1776)).toLowerCase();
  function validReadingFilter(value){return ['all','read','unread','bookmarked'].includes(value)?value:'all';}
- function validMode(value){return modes.includes(value)?value:'title';}
+ function validMode(value){return modes.includes(value)?value:'newest';}
  function compare(a,b,sort){
   const title=a.title.localeCompare(b.title,'ar');
   if(sort==='title')return title;
@@ -301,5 +301,6 @@
    const params=new URLSearchParams(location.search);params.set('nav-sort',sort);history.replaceState(null,'',location.pathname+'?'+params+location.hash);
    try{localStorage.setItem('egyptian-industrial-library:navigation-sort:v1',sort);}catch{}
   });
- }).catch(()=>{root.textContent='تعذّر تحميل قائمة المقالات. ';const link=document.createElement('a');link.href=siteRoot.pathname;link.textContent='فتح فهرس المكتبة';root.append(link);});
+  window.LibraryLoading?.done('navigation');
+ }).catch(()=>{root.textContent='تعذّر تحميل قائمة المقالات. ';const link=document.createElement('a');link.href=siteRoot.pathname;link.textContent='فتح فهرس المكتبة';root.append(link);window.LibraryLoading?.fail('تعذّر تحميل قائمة المقالات. جرّب مرة أخرى.');});
 })();

@@ -333,7 +333,7 @@
 .library-sidebar{position:sticky;top:22px;align-self:start;min-width:0}
 .library-folders>summary,.article-navigation>summary{cursor:pointer;font-size:16px;font-weight:600;padding:13px 4px;color:var(--ink)}
 .library-folders>summary{margin-bottom:10px}
-.folder-tree,#categories.folder-tree{display:block;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--line) transparent;padding:3px 4px 8px}
+.folder-tree,#categories.folder-tree{display:block;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--line) transparent;padding:0 4px 8px}
 .folder-tree .article-folder{margin-block:5px}
 .folder-tree .folder-row{display:flex;align-items:stretch;border-radius:5px;min-height:44px}
 .folder-tree .folder-toggle,#categories.folder-tree .folder-toggle{width:42px;min-width:42px;padding:7px 3px;display:flex;align-items:center;justify-content:center;gap:1px;border:0;background:transparent;color:var(--green)}
@@ -487,22 +487,11 @@
 
 /* Clear groups for the library's search and display controls. */
 :root{--panel-surface:#eef1e8;--panel-border:#cbd5c4}
-.search-panel{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:start;padding:0;border:0;border-radius:0;background:transparent}
+.search-panel{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:start;padding:0;border:0;border-radius:0;background:transparent}
 .main-query-field{min-width:0}
 :root .search-panel .search{min-height:52px;padding:2px 16px;border-radius:8px;background:var(--paper)}
-.search-panel .main-search-options{position:relative;display:block;min-width:0;margin:0;padding:0;border:0;font-size:13px}
-.main-search-options>summary{display:flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:10px 14px;border:1px solid var(--control-border,var(--line));border-radius:8px;color:var(--ink);cursor:pointer;list-style:none;line-height:1.7}
-.main-search-options>summary::-webkit-details-marker{display:none}
-.main-search-options>summary:hover,.main-search-options[open]>summary{background:var(--panel-surface);border-color:var(--green)}
-.main-search-options>summary:focus-visible{outline:3px solid var(--gold);outline-offset:4px}
 .search-settings-icon{width:19px;height:19px;flex-shrink:0;color:var(--green)}
 .search-options-chevron{width:14px;height:14px;flex-shrink:0;color:var(--muted)}
-.main-search-options[open] .search-options-chevron{transform:rotate(180deg)}
-#active-search-scope{color:var(--green);font-size:12px}
-#active-search-scope:not([hidden])::before{content:'·';margin-inline-end:8px}
-.search-options-popover{position:absolute;inset-block-start:calc(100% + 8px);inset-inline-end:0;z-index:5;width:250px;max-width:calc(100vw - 40px);padding:16px;border:1px solid var(--panel-border);border-radius:10px;background:var(--paper);box-shadow:0 8px 24px #0002}
-.search-options-popover label{display:block;margin:0 0 8px;font-size:13px;font-weight:500;color:var(--ink)}
-:root .search-options-popover select{width:100%;background-color:var(--paper)}
 .toolbar.filters-panel{display:flex;flex-wrap:wrap;gap:16px 24px;align-items:flex-end;justify-content:flex-start;margin:0;padding:0;border:0;border-radius:0;background:transparent}
 .toolbar.filters-panel label{display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:6px;min-width:0;font-size:12px;font-weight:400;line-height:1.7;color:var(--muted);white-space:normal}
 :root .filters-panel select{width:auto;max-width:100%;min-height:44px;padding-block:8px;background-color:var(--paper);font-weight:400;font-size:14px}
@@ -524,9 +513,6 @@
 .library-folders .folder-search,.library-folders .sidebar-reading-filter select{background-color:var(--paper)}
 @media(max-width:680px){
  .search-panel{grid-template-columns:1fr;gap:8px}
- .search-panel .main-search-options{justify-self:start;max-width:100%}
- .main-search-options>summary{min-height:44px;padding:8px 10px;border-color:transparent;flex-wrap:wrap;justify-content:flex-start}
- .search-options-popover{inset-inline-start:0;inset-inline-end:auto}
  .toolbar.filters-panel{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px;padding:0}
  :root .filters-panel :is(#reading-filter,#page-size,#sort,#bookmark-category){width:100%}
  .toolbar.filters-panel .sort-field{grid-column:1/-1}
@@ -618,3 +604,38 @@
 /* Cards render from the document; excerpts on other pages fill in independently. */
 :root[data-library-pending] :is(#cards,#count){visibility:hidden}
 .card-link>p.excerpt-pending{min-height:4em;border-radius:4px;background:linear-gradient(var(--line),var(--line)) right 0 top 12px/85% 7px no-repeat,linear-gradient(var(--line),var(--line)) right 0 top 30px/65% 7px no-repeat;opacity:.4}
+
+/* Instant title suggestions, with an explicit full-text search action. */
+.main-query-field{position:static}
+.search-suggestions{position:absolute;inset-block-start:calc(100% + 8px);inset-inline:0;z-index:20;display:flex;flex-direction:column;max-height:min(480px,60vh);max-height:min(480px,60dvh);padding:0;border:1px solid var(--control-border,var(--line));border-radius:10px;background:var(--paper);box-shadow:0 14px 38px #0003;overflow:hidden;text-align:start}
+.suggestions-heading{flex:0 0 auto;margin:0;padding:12px 16px 9px;color:var(--muted);font-size:11px;line-height:1.7}
+#search-suggestion-list{min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:0 6px 6px}
+.search-suggestion{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:10px;border:1px solid transparent;border-radius:6px;line-height:1.65}
+.suggestion-title{font-size:15px;color:var(--ink);overflow-wrap:anywhere}
+.suggestion-category{flex-shrink:0;font-size:11px;color:var(--muted)}
+.search-suggestion:hover,.search-suggestion[aria-selected=true]{background:var(--panel-surface);border-color:var(--green)}
+.suggestions-empty{margin:0;padding:8px 10px 15px;font-size:13px;line-height:1.8;color:var(--muted)}
+@media(max-width:680px){.search-suggestions{max-height:55dvh}.search-suggestion{flex-direction:column;align-items:flex-start;gap:3px;padding:10px 8px}.suggestion-title{font-size:14px}:root .search-panel .search{padding-inline:6px 10px;gap:6px}}
+.search-panel .search-icon{display:inline-flex;align-items:center;justify-content:center;flex:0 0 30px;color:var(--muted)}
+.search-panel .search-icon svg{width:21px;height:21px}
+.search-panel .full-search-submit{display:inline-flex;align-items:center;justify-content:center;min-height:52px;max-width:100%;padding:10px 16px;border:1px solid var(--control-border,var(--line));border-radius:8px;background:var(--panel-surface);color:var(--green);font:inherit;font-size:13px;line-height:1.7;cursor:pointer}
+.search-panel .full-search-submit:hover{border-color:var(--green)}
+.search-panel .full-search-submit:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+@media(max-width:680px){.search-panel .full-search-submit{min-height:44px;justify-self:start;padding:8px 12px;font-size:12px}}
+
+/* Make completed searches visible without adding an artificial delay. */
+.results-count.has-search{padding:14px 16px;border:1px solid var(--panel-border);border-radius:8px;background:var(--panel-surface);scroll-margin-block-start:20px;color:var(--ink)}
+.results-count.has-search::after{display:none}
+.results-count.has-search:focus{outline:none}
+.has-search .results-description{display:flex;flex-direction:column;gap:4px;min-width:0;overflow-wrap:anywhere}
+.search-results-heading{font-size:16px;font-weight:500;color:var(--green)}
+.search-results-heading strong{font-weight:600}
+.search-results-detail{font-size:12px;font-weight:400;color:var(--muted)}
+.results-count.search-updated{animation:search-result-feedback 1.8s ease-out}
+@keyframes search-result-feedback{0%,30%{border-color:var(--green);box-shadow:0 0 0 3px var(--line)}100%{border-color:var(--panel-border);box-shadow:0 0 0 0 transparent}}
+@media(prefers-reduced-motion:reduce){.results-count.search-updated{animation:none;border-color:var(--green)}}
+.has-search .results-description{flex:1 1 220px}
+.clear-search-results{display:inline-flex;align-items:center;justify-content:center;gap:7px;flex:0 0 auto;min-height:44px;margin-inline-start:auto;padding:8px 12px;border:1px solid var(--control-border,var(--line));border-radius:6px;background:transparent;color:var(--ink);font:inherit;font-size:12px;line-height:1.7;cursor:pointer}
+.clear-search-results svg{width:14px;height:14px;flex-shrink:0}
+.clear-search-results:hover{border-color:var(--green);color:var(--green)}
+.clear-search-results:focus-visible{outline:2px solid var(--gold);outline-offset:3px}

@@ -4,6 +4,10 @@
   "scripts": {
     "build:search": "node scripts/build-search.mjs",
     "test": "node scripts/test-search.mjs",
-    "test:offline": "node scripts/test-offline.mjs"
+    "test:offline": "node scripts/test-offline.mjs",
+    "test:sync": "node scripts/test-sync.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.13"
   }
 }

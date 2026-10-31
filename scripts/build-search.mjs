@@ -7,6 +7,7 @@ import {gzipSync} from 'node:zlib';
 import {normalize,shardBucket} from '../docs/search-engine.js';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../docs');
 const archive=JSON.parse(fs.readFileSync(path.join(root,'archive.json'),'utf8'));
+const articleById=new Map(archive.map(article=>[article.id,article]));
 const hash=value=>createHash('sha256').update(value).digest('hex').slice(0,16);
 const write=(name,value)=>{const file=path.join(root,name);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,typeof value==='string'?value:JSON.stringify(value));};
 const postings=new Map();
@@ -52,6 +53,7 @@ shortBuckets.forEach((data,i)=>write(prefix+'short/'+i.toString(16).padStart(2,'
 const sortedCounts=Object.fromEntries(Object.entries(counts).sort(([a],[b])=>a<b?-1:a>b?1:0));
 write(prefix+'routes.json',sortedCounts);
 const collator=new Intl.Collator('ar'),number=new Intl.NumberFormat('ar-EG');
+const readingTime=count=>count===1?'دقيقة واحدة':count===2?'دقيقتان':number.format(count)+(count%100>=3&&count%100<=10?' دقائق':' دقيقة');
 const initial=[...archive].sort((a,b)=>{
  if(!a.publicationDate||!b.publicationDate)return Number(Boolean(b.publicationDate))-Number(Boolean(a.publicationDate))||collator.compare(a.title,b.title);
  return b.publicationDate.localeCompare(a.publicationDate)||collator.compare(b.title,a.title);
@@ -65,7 +67,7 @@ const dataJSON=JSON.stringify(data);write('library-data.json',dataJSON);
 const escaped=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const dateFormat=new Intl.DateTimeFormat('ar-EG',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'});
 const bookmarkIcon=fs.readFileSync(path.join(root,'bookmarks.js'),'utf8').match(/ const icon='([^\n]+)';/)[1];
-const firstCards=initial.map(a=>`<article class="card" data-article-id="${a.id}" data-published="${a.publicationDate||''}"><a class="card-link" href="articles/${a.id}.html?nav-sort=newest"><div class="card-top"><span>${escaped(a.category)}</span><span>↖</span></div><h3>${escaped(a.title)}</h3><div class="card-date">${a.publicationDate?'<time datetime="'+a.publicationDate+'">'+dateFormat.format(new Date(a.publicationDate+'T00:00:00Z'))+'</time>':'تاريخ النشر غير متاح'}</div><p>${escaped(a.excerpt)}</p><div class="card-bottom">${number.format(a.minutes)} دقائق قراءة <span>اقرأ المقال ←</span></div></a><div class="card-tools"><button type="button" class="read-toggle" data-read-toggle data-article-id="${a.id}" aria-pressed="false">علّم كمقروء</button><button type="button" class="bookmark-toggle" data-bookmark-toggle data-article-id="${a.id}" data-bookmark-title="${escaped(a.title)}" aria-pressed="false" aria-label="${escaped('إضافة إلى المحفوظات: '+a.title)}" title="إضافة إلى المحفوظات">${bookmarkIcon}</button></div></article>`).join('');
+const firstCards=initial.map(a=>`<article class="card" data-article-id="${a.id}" data-published="${a.publicationDate||''}"><a class="card-link" href="articles/${a.id}.html?nav-sort=newest"><div class="card-top"><span>${escaped(a.category)}</span><span>↖</span></div><h3>${escaped(a.title)}</h3><div class="card-date">${a.publicationDate?'<time datetime="'+a.publicationDate+'">'+dateFormat.format(new Date(a.publicationDate+'T00:00:00Z'))+'</time>':'تاريخ النشر غير متاح'}</div><p>${escaped(a.excerpt)}</p><div class="card-bottom">مدة القراءة: ${readingTime(a.minutes)} <span>اقرأ المقال ←</span></div></a><div class="card-tools"><button type="button" class="read-toggle" data-read-toggle data-article-id="${a.id}" aria-pressed="false">علّم كمقروء</button><button type="button" class="bookmark-toggle" data-bookmark-toggle data-article-id="${a.id}" data-bookmark-title="${escaped(a.title)}" aria-pressed="false" aria-label="${escaped('إضافة إلى المحفوظات: '+a.title)}" title="إضافة إلى المحفوظات">${bookmarkIcon}</button></div></article>`).join('');
 for(const name of ['index.html','reading.html','bookmarks.html']){
  const file=path.join(root,name);let html=fs.readFileSync(file,'utf8');
  html=html.replace(/<script id="library-data" type="application\/json">[\s\S]*?<\/script>/,'');
@@ -89,6 +91,8 @@ const loaderHTML='<div id="page-loader" role="status" aria-live="polite" aria-la
 const styleVersion=hash(fs.readFileSync(path.join(root,'style.css')));
 for(const file of [path.join(root,'index.html'),path.join(root,'reading.html'),path.join(root,'bookmarks.html'),path.join(root,'profile.html'),...fs.readdirSync(path.join(root,'articles')).filter(name=>name.endsWith('.html')).map(name=>path.join(root,'articles',name))]){
  let html=fs.readFileSync(file,'utf8');
+ const article=articleById.get(path.basename(file,'.html'));
+ if(article)html=html.replace(/<div class="meta">[\s\S]*?<\/div>/,meta=>meta.replace(/\s[0-9٠-٩]+ دقائق قراءة/,' مدة القراءة: '+readingTime(article.minutes)));
  html=html.replace(/<style data-(?:font-gate|page-loader)>[\s\S]*?<\/style>/g,'');
  html=html.replace(/<div id="page-loader"[\s\S]*?<\/button><\/div><\/div>/,'');
  const tasks=['index.html','reading.html','bookmarks.html'].includes(path.basename(file))?'library'+(path.basename(file)==='index.html'?',search':''):file.includes(path.sep+'articles'+path.sep)?'navigation':'';

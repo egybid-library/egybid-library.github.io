@@ -20,6 +20,13 @@
   has:id=>Object.prototype.hasOwnProperty.call(items,id),
   entries:()=>({...items}),
   persistent:()=>persistent,
+  applySync(next){
+   const clean=Object.fromEntries(Object.entries(next).filter(([id,date])=>/^[a-f0-9]{16}$/.test(id)&&typeof date==='string'&&Number.isFinite(Date.parse(date))));
+   const current=load();
+   if(JSON.stringify(Object.entries(current).sort())===JSON.stringify(Object.entries(clean).sort()))return;
+   if(!persistent)throw Error('Reading storage unavailable');
+   localStorage.setItem(key,JSON.stringify({version:1,items:clean}));items=clean;notify({type:'sync'});
+  },
   subscribe(listener){listeners.add(listener);return ()=>listeners.delete(listener);},
   toggle(id){
    if(!/^[a-f0-9]{16}$/.test(id))return false;

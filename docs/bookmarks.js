@@ -38,6 +38,13 @@
   has:id=>Object.prototype.hasOwnProperty.call(items,id),
   entries:()=>({...items}),
   persistent:()=>persistent,
+  applySync(next){
+   const clean=Object.fromEntries(Object.entries(next).filter(([id,date])=>validId(id)&&validDate(date)));
+   const current=load();
+   if(JSON.stringify(Object.entries(current).sort())===JSON.stringify(Object.entries(clean).sort()))return;
+   if(!persistent)throw Error('Bookmark storage unavailable');
+   localStorage.setItem(key,JSON.stringify({version:1,items:clean}));items=clean;notify({type:'sync'});
+  },
   subscribe(listener){listeners.add(listener);return ()=>listeners.delete(listener);},
   control(id,title,withLabel=false){
    const saved=this.has(id),label=saved?'إزالة من المحفوظات':'إضافة إلى المحفوظات';

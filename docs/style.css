@@ -744,23 +744,6 @@
 .sections-drawer .category-list{padding-top:4px}
 .sections-drawer .category-list .folder-row,.sections-drawer .all-articles{min-height:52px}
 .sections-drawer .folder-row{position:static;top:auto}
-.drawer-library-search{flex:0 0 auto;position:relative;padding-bottom:18px;margin-bottom:18px;border-bottom:1px solid var(--line)}
-.drawer-search-label{margin:0 0 10px;font-size:14px;font-weight:600;color:var(--ink)}
-.sections-drawer .search-panel{margin:0}
-.sections-drawer .search-suggestions{position:absolute;overflow:hidden;margin-top:0}
-.sections-drawer #search-suggestion-list{overflow-y:auto}
-.sections-drawer .article-search-content{display:block}
-.sections-drawer .article-search-results{overflow:visible;padding:0}
-.sections-drawer .article-search-actions{margin:12px 0 0}
-.sections-drawer .article-search-status{margin:12px 0;font-size:12px}
-.sections-drawer .article-search-more{margin:12px 0 0;width:100%}
-.sections-drawer .article-search-content .search input{min-width:0;width:100%;font:inherit;font-size:16px;padding-block:10px}
-.sections-drawer.has-library-query :is(.article-navigation,.library-folders){display:none}
-.sections-drawer.has-library-query .drawer-library-search{display:flex;flex-direction:column;flex:1;min-height:0;padding-bottom:0;margin-bottom:0;border-bottom:0}
-.sections-drawer.has-library-query .article-search-content{display:flex;flex-direction:column;flex:1;min-height:0}
-.sections-drawer.has-library-query .article-search-content>:not(.article-search-results){flex-shrink:0}
-.sections-drawer.has-library-query .article-search-results{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain}
-.sections-drawer .folder-search-tools:not(.has-title-query)>label:not(.sidebar-reading-filter),.sections-drawer .folder-search-tools:not(.has-title-query)>.folder-search,.sections-drawer .folder-search-tools:not(.is-filtered)>.folder-search-status{display:none}
 .article-search-open,.sections-open{box-sizing:border-box;display:flex;align-items:center;justify-content:flex-start;gap:12px;width:100%;min-width:0;min-height:50px;padding:12px 14px;border:1px solid var(--control-border,var(--line));border-radius:8px;background:var(--paper);color:var(--ink);font:inherit;font-size:14px;line-height:1.7;text-align:start;cursor:pointer}
 .article-search-open{margin-bottom:14px}
 @media(min-width:1001px){.reader-sidebar .article-navigation{max-height:calc(100vh - 108px);max-height:calc(100dvh - 108px)}}
@@ -771,7 +754,7 @@
 .article-search-dialog{width:min(760px,calc(100vw - 32px));max-width:none;max-height:85vh;max-height:85dvh;border-radius:12px}
 .article-search-dialog[open]{display:flex;flex-direction:column}
 .article-search-content{display:flex;flex-direction:column;min-height:0}
-.article-search-dialog .search-panel{margin:16px 20px 0;flex-shrink:0}
+.article-search-dialog .search-panel{margin:16px 20px 12px;flex-shrink:0}
 .article-search-dialog .search input{width:100%;min-width:0;font:inherit;font-size:16px;padding-block:10px}
 .article-search-clear{display:flex;align-items:center;justify-content:center;flex:0 0 40px;width:40px;height:44px;margin:0;padding:0;border:0;border-radius:6px;background:transparent;color:var(--muted);font:inherit;font-size:25px;cursor:pointer}
 .article-search-actions{margin:12px 20px 0;border:0;border-radius:8px;background:transparent;padding:0}
@@ -805,3 +788,58 @@
  .reader .results-count{scroll-margin-block-start:88px}
 }
 @media print{.article-search-open,.mobile-sections-control,.sections-drawer,.article-search-dialog{display:none!important}}
+
+/* Compact mobile header and independent section browsing controls. */
+.mobile-library-search{display:none}
+.navigation-options{display:contents}
+.navigation-options .sidebar-reading-filter{display:grid;grid-template-columns:40px minmax(0,1fr);align-items:center;gap:12px;margin:12px 4px 16px;font-size:12px;color:var(--ink)}
+@media(max-width:680px){
+ .site-header.has-mobile-sections{grid-template-columns:44px minmax(0,1fr) 44px;grid-template-areas:"menu brand search" "navigation navigation navigation";gap:12px 6px}
+ .site-header.has-mobile-sections>:is(h1,.brand){margin:0;text-align:center;justify-content:center}
+ .site-header.has-mobile-sections .brand{justify-content:center;font-size:16px;line-height:1.7;text-align:center}
+ .site-header.has-mobile-sections .brand-icon{display:none}
+ .site-header .mobile-library-search{grid-area:search;display:flex;align-items:center;justify-content:center;width:44px;height:44px;padding:10px;border:0;border-radius:7px;background:transparent;color:var(--green);cursor:pointer}
+ .mobile-library-search svg{width:24px;height:24px}
+ .mobile-library-search:hover{background:var(--panel-surface)}
+ .mobile-search-body{min-height:0;overflow:auto;padding:16px 14px 24px}
+ .mobile-search-body .search-panel{margin:0}
+ .mobile-search-body .search-suggestions{position:static;max-height:none;margin-top:12px}
+ .mobile-search-body #search-suggestion-list{max-height:none}
+ .sections-drawer .navigation-section{display:none}
+ .sections-drawer .navigation-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:12px;margin:0 0 14px;border:1px solid var(--panel-border);border-radius:9px;background:var(--panel-surface)}
+ .sections-drawer .navigation-options :is(.navigation-sort,.sidebar-reading-filter){display:flex;flex-direction:column;align-items:stretch;gap:7px;min-width:0;margin:0;font-size:12px}
+ :root .sections-drawer .navigation-options select{width:100%;min-width:0;min-height:46px;padding-inline:9px 29px;background-position:left 9px center;background-size:12px;font-size:12px}
+ .sections-drawer .folder-search-tools{padding:0}
+ .sections-drawer .folder-search-tools .folder-search-status:empty{display:none}
+ .sections-drawer .folder-tree:not(.category-list) .folder-row{position:sticky;top:0;z-index:2;background:var(--paper);border-radius:0;box-shadow:0 1px 0 var(--line)}
+ :root[data-theme=dark] .sections-drawer .folder-tree:not(.category-list) .folder-row{background:var(--surface)}
+ .sections-drawer .folder-tree .article-folder{position:relative}
+}
+
+/* Spacious page navigation and compact utility icons on every screen. */
+.article-search-status:empty{margin:0}
+.site-header nav{gap:18px}
+.site-header .header-page-links{display:flex;align-items:center;gap:8px;min-width:320px;padding:4px;border:1px solid var(--line);border-radius:9px;background:var(--panel-surface)}
+.site-header .header-page-links>a{flex:1;min-width:0;min-height:44px;padding:10px 18px;border:0;border-radius:6px;font-size:14px;line-height:1.6;color:var(--muted);white-space:nowrap}
+.site-header .header-page-links>a:hover{background:var(--surface-hover,var(--paper));color:var(--ink)}
+.site-header .header-page-links>a[aria-current=page]{background:var(--paper);color:var(--green);box-shadow:0 1px 3px #0001}
+.site-header .header-tools{display:flex;align-items:center;gap:2px}
+.site-header .header-tools>button{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;flex:0 0 40px;width:40px;min-width:40px;height:40px;min-height:40px;padding:9px;border:0;border-radius:50%;background:transparent;color:var(--green)}
+.site-header .header-tools>button>span{position:absolute!important;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.site-header .header-tools>button:hover{background:var(--surface-hover,var(--panel-surface))}
+.site-header .header-tools>button svg{display:block;width:20px;height:20px;flex:0 0 20px}
+:root[data-theme=dark] .site-header .header-tools .theme-toggle[aria-pressed=true]{background:transparent;color:var(--green)}
+@media(max-width:680px){
+ .site-header nav{display:flex;flex-direction:column;align-items:stretch;gap:8px;margin-inline:0}
+ .site-header .header-tools{order:0;justify-content:flex-end}
+ .site-header .header-page-links{order:1;min-width:0;gap:6px}
+ .site-header .header-page-links>a{padding-inline:10px}
+ .site-header .header-tools>button{flex:0 0 44px;width:44px;min-width:44px;height:44px;min-height:44px}
+}
+
+/* The section link selects the category; its adjacent arrow only expands it. */
+.folder-tree .folder-row,#categories.folder-tree .folder-row{cursor:default}
+.folder-tree .folder-toggle,#categories.folder-tree .folder-toggle{cursor:pointer;border-radius:5px;align-self:stretch}
+.folder-tree .folder-name,#categories.folder-tree .folder-name{cursor:pointer;text-decoration:none}
+.folder-tree .folder-toggle:hover{background:var(--surface-hover,var(--panel-surface))}
+.folder-tree .all-articles{box-sizing:border-box;text-decoration:none}

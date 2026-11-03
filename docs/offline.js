@@ -5,7 +5,8 @@
  const navigation=document.querySelector('.site-header nav');if(!navigation)return;
  const open=document.createElement('button');open.type='button';open.className='offline-open';open.setAttribute('aria-label','تحميل المكتبة');open.title='تحميل المكتبة للقراءة بدون إنترنت';
  open.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5"/></svg><span>تحميل المكتبة</span>';
- navigation.insertBefore(open,navigation.querySelector('[data-theme-toggle]'));
+ const themeButton=navigation.querySelector('[data-theme-toggle]');
+ (themeButton?.parentElement||navigation).insertBefore(open,themeButton||null);
  const savedDate=new Intl.DateTimeFormat('ar-EG',{day:'numeric',month:'long',year:'numeric',hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'});
  const dialog=document.createElement('dialog');dialog.className='offline-dialog';dialog.setAttribute('aria-labelledby','offline-title');
  dialog.innerHTML='<button type="button" class="offline-close" aria-label="إغلاق">×</button><h2 id="offline-title">تحميل المكتبة</h2><p>احفظ المقالات على هذا الجهاز.</p><p class="offline-saved-at" hidden></p><p class="offline-size"></p><progress class="offline-progress" hidden max="100" value="0" aria-label="تقدّم تحميل المكتبة"></progress><p class="offline-status" role="status" aria-live="polite"></p><div class="offline-actions"><button type="button" class="offline-start" disabled>تحميل المكتبة</button><button type="button" class="offline-pause" hidden>إيقاف مؤقت</button><button type="button" class="offline-remove" hidden>إزالة النسخة المحفوظة</button></div><p class="offline-note">النسخة محفوظة في هذا المتصفح على هذا الجهاز. مسح بيانات الموقع يزيلها.</p>';

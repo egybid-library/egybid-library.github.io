@@ -206,8 +206,8 @@ function draw({expandCategory=true}={}){
  $('#pages').hidden=Boolean(waiting);
  $('#pages').innerHTML=`<button ${page===1?'disabled':''} id="prev">السابق</button><span>${ar.format(page)} / ${ar.format(max)}</span><button ${page===max?'disabled':''} id="next">التالي</button>`;
  $('#prev').onclick=()=>{page--;draw();$('#library').scrollIntoView();};$('#next').onclick=()=>{page++;draw();$('#library').scrollIntoView();};
- document.querySelectorAll('[data-cat]').forEach(button=>{button.classList.toggle('active',button.dataset.cat===category);button.setAttribute('aria-pressed',button.dataset.cat===category);});
- folderNavigation?.selectCategory(category,expandCategory);
+ folderNavigation?.setSort(sort);
+ folderNavigation?.selectCategory(category);
  window.LibraryUI.setCategory(category);
  document.querySelectorAll('[data-reading-category]').forEach(button=>{const active=button.dataset.readingCategory===category;button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active));});
  const p=new URLSearchParams();if(category)p.set('category',category);if(query){p.set('q',query);if(searchScope==='title')p.set('scope','title');}if(pageSize!==20)p.set('size',pageSize);if(sort!=='newest')p.set('sort',sort);if(!isCollectionPage&&readingFilter!=='all')p.set('reading',readingFilter);
@@ -258,7 +258,7 @@ Promise.resolve().then(()=>{
  articles.forEach(article=>articlesById.set(article.id,article));
  const categories=[...new Set(articles.map(article=>article.category))].sort((a,b)=>a.localeCompare(b,'ar'));
  if(!categories.includes(category))category='';
- if($('#categories'))folderNavigation=window.ArticleNavigator.create($('#categories'),articles,{categoriesOnly:true,activeCategory:category,onCategory:value=>{category=value;page=1;if(query||$('#query')?.value)clearLibrarySearch();else draw({expandCategory:false});window.LibraryUI.revealCategory();}});
+ if($('#categories'))folderNavigation=window.ArticleNavigator.create($('#categories'),articles,{sort,readingFilter:'all',showFilter:false,startCollapsed:true,activeCategory:category,onCategory:value=>{category=value;page=1;if(query||$('#query')?.value)clearLibrarySearch();else draw({expandCategory:false});window.LibraryUI.revealCategory();}});
  renderProgress();draw();warmContentSearch();
  if(!isCollectionPage)contentEngine().then(engine=>engine.warm()).then(()=>window.LibraryLoading?.done('search')).catch(()=>window.LibraryLoading?.fail('تعذّر تجهيز البحث. جرّب مرة أخرى.'));
  if(isBookmarksPage)$('#bookmark-category').disabled=false;

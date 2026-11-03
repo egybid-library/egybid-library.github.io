@@ -14,7 +14,7 @@ fs.writeFileSync(syncPath,syncSource);
 const syncVersion=sha(Buffer.concat(['sync.js','sync-core.js','sync-config.js','reading-state.js','bookmarks.js'].map(name=>fs.readFileSync(path.join(root,name))))).slice(0,16);
 const version=sha(fs.readFileSync(path.join(root,'offline.js'))).slice(0,16);
 const pages=['index.html','reading.html','bookmarks.html','profile.html',...fs.readdirSync(path.join(root,'articles')).filter(p=>p.endsWith('.html')).map(p=>'articles/'+p)];
-const sharedVersions=Object.fromEntries(['style.css','library-ui.js','article-search.js','article-navigation.js'].map(name=>[name,sha(fs.readFileSync(path.join(root,name))).slice(0,16)]));
+const sharedVersions=Object.fromEntries(['style.css','theme.js','library-ui.js','article-search.js','article-navigation.js'].map(name=>[name,sha(fs.readFileSync(path.join(root,name))).slice(0,16)]));
 sharedVersions['app.js']=sha(Buffer.concat(['app.js','search-worker.js','search-engine.js'].map(name=>fs.readFileSync(path.join(root,name))))).slice(0,16);
 for(const page of pages){
  const p=path.join(root,page),prefix=page.startsWith('articles/')?'../':'';

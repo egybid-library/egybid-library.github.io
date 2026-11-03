@@ -32,20 +32,33 @@
  }
  function lockModal(){document.documentElement.classList.add('library-modal-open');}
  function unlockModal(){if(!document.querySelector('dialog[open]'))document.documentElement.classList.remove('library-modal-open');}
+ const headerNavigation=document.querySelector('.site-header nav');
+ if(headerNavigation){
+  const pages=document.createElement('div');pages.className='header-page-links';
+  const tools=document.createElement('div');tools.className='header-tools';tools.setAttribute('role','group');tools.setAttribute('aria-label','أدوات المكتبة');
+  [...headerNavigation.children].forEach(child=>{if(child.tagName==='A')pages.append(child);else tools.append(child);});
+  headerNavigation.append(pages,tools);
+ }
  const panel=document.querySelector('.library-folders,.article-navigation');
  let drawer,trigger,currentLabel,closeSections=()=>{};
  if(panel){
+  panel.querySelector('summary').textContent='أقسام المكتبة';
   const compact=window.matchMedia('(max-width:680px)');
   const placeholder=document.createComment('Library sections position');panel.before(placeholder);
   const control=document.createElement('div');control.className='mobile-sections-control';
   control.innerHTML='<button type="button" class="sections-open" aria-label="أقسام المكتبة" title="أقسام المكتبة" aria-describedby="mobile-section-current" aria-haspopup="dialog" aria-controls="sections-drawer" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg><small id="mobile-section-current" class="mobile-section-current sr-only">جميع المقالات</small></button>';
   const header=document.querySelector('.site-header');
   header.classList.add('has-mobile-sections');header.append(control);
+  const searchControl=document.createElement('button');searchControl.type='button';searchControl.className='mobile-library-search';
+  searchControl.setAttribute('aria-label','البحث في المكتبة');searchControl.title='البحث في المكتبة';searchControl.setAttribute('aria-haspopup','dialog');
+  searchControl.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg>';
+  header.append(searchControl);
+  searchControl.addEventListener('click',()=>{closeSections();document.dispatchEvent(new Event('library:search-open'));});
   trigger=control.querySelector('button');currentLabel=control.querySelector('small');
   const content=document.createElement('div');content.className='section-panel-content';
   [...panel.children].filter(child=>child.tagName!=='SUMMARY').forEach(child=>content.append(child));panel.append(content);
   drawer=document.createElement('dialog');drawer.id='sections-drawer';drawer.className='sections-drawer';drawer.setAttribute('aria-labelledby','sections-drawer-title');
-  drawer.innerHTML='<div class="library-dialog-heading"><h2 id="sections-drawer-title">أقسام المكتبة</h2><button type="button" class="library-dialog-close" aria-label="إغلاق أقسام المكتبة">×</button></div><div class="sections-drawer-body"><div class="drawer-library-search"><p class="drawer-search-label">البحث في المكتبة</p></div></div>';
+  drawer.innerHTML='<div class="library-dialog-heading"><h2 id="sections-drawer-title">أقسام المكتبة</h2><button type="button" class="library-dialog-close" aria-label="إغلاق أقسام المكتبة">×</button></div><div class="sections-drawer-body"></div>';
   document.body.append(drawer);
   function close(){if(drawer.open){drawer.dispatchEvent(new Event('library:sections-closing'));drawer.close();}}
   closeSections=close;
@@ -67,18 +80,29 @@
   window.addEventListener('pageshow',event=>{if(event.persisted)close();});
   const searchForm=document.getElementById('searchform');
   const searchPosition=searchForm?document.createComment('Library search position'):null;
+  let mobileSearch;
   if(searchForm){
    searchForm.before(searchPosition);
+   mobileSearch=document.createElement('dialog');mobileSearch.className='article-search-dialog mobile-search-dialog';mobileSearch.setAttribute('aria-labelledby','mobile-search-title');
+   mobileSearch.innerHTML='<div class="library-dialog-heading"><h2 id="mobile-search-title">البحث في المكتبة</h2><button type="button" class="library-dialog-close" aria-label="إغلاق البحث">×</button></div><div class="mobile-search-body"></div>';
+   document.body.append(mobileSearch);
+   const closeSearch=()=>mobileSearch.close();
+   mobileSearch.querySelector('button').addEventListener('click',closeSearch);
+   mobileSearch.addEventListener('close',unlockModal);
+   mobileSearch.addEventListener('click',event=>{if(event.target===mobileSearch){const b=mobileSearch.getBoundingClientRect();if(event.clientX<b.left||event.clientX>b.right||event.clientY<b.top||event.clientY>b.bottom)closeSearch();}});
+   document.addEventListener('library:search-open',()=>{mobileSearch.showModal();lockModal();searchForm.querySelector('input').focus();});
+   searchForm.addEventListener('submit',closeSearch,true);
+   searchForm.addEventListener('click',event=>{if(event.target.closest('.suggestion-actions button,a'))closeSearch();},true);
    searchForm.addEventListener('submit',close,true);
    searchForm.addEventListener('click',event=>{if(event.target.closest('.suggestion-actions button,a'))close();},true);
   }
   function syncLayout(){
    if(compact.matches){
     drawer.querySelector('.sections-drawer-body').append(panel);panel.open=false;
-    if(searchForm)drawer.querySelector('.drawer-library-search').append(searchForm);
+    if(searchForm)mobileSearch.querySelector('.mobile-search-body').append(searchForm);
    }else{
     close();placeholder.after(panel);panel.open=!panel.classList.contains('article-navigation')||window.matchMedia('(min-width:1001px)').matches;
-    if(searchForm)searchPosition.after(searchForm);
+    if(searchForm){mobileSearch.close();searchPosition.after(searchForm);}
    }
   }
   compact.addEventListener('change',syncLayout);syncLayout();

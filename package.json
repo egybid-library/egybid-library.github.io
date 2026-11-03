@@ -5,6 +5,7 @@
     "build:search": "node scripts/build-search.mjs",
     "test": "node scripts/test-search.mjs",
     "test:offline": "node scripts/test-offline.mjs",
+    "test:sharing": "node scripts/test-sharing.mjs",
     "test:sync": "node scripts/test-sync.mjs"
   },
   "devDependencies": {

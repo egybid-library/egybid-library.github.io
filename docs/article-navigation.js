@@ -20,7 +20,12 @@
   if(!a.publicationDate||!b.publicationDate)return Number(Boolean(b.publicationDate))-Number(Boolean(a.publicationDate))||title;
   return (sort==='newest'?b.publicationDate.localeCompare(a.publicationDate):a.publicationDate.localeCompare(b.publicationDate))||(sort==='newest'?-title:title);
  }
- function articleHref(article,sort,query='',readingFilter){return sitePath('articles/'+article.id+'.html')+'?nav-sort='+sort+(query?'&nav-q='+encodeURIComponent(query):'')+(readingFilter?'&nav-reading='+readingFilter:'');}
+ function articleHref(article,query='',readingFilter){
+  const params=new URLSearchParams();
+  if(query)params.set('nav-q',query);
+  if(readingFilter)params.set('nav-reading',readingFilter);
+  return sitePath('articles/'+article.id+'.html')+(params.size?'?'+params:'');
+ }
  const navigationStateKey='egyptian-industrial-library:navigation-state:v1';
  function readNavigationState(){
   try{
@@ -109,7 +114,7 @@
   function articleList(category){
    return matchingMembers(category).sort((a,b)=>compare(a,b,sort)).map(article=>{
     const read=Boolean(window.ReadingProgress?.has(article.id));
-    return '<li class="folder-entry"><a class="folder-article'+(article.id===options.currentId?' current-article':'')+'" data-nav-article="'+article.id+'" href="'+articleHref(article,sort,searchQuery,readingFilter)+'"'+(article.id===options.currentId?' aria-current="page"':'')+'><span class="folder-article-title">'+escape(article.title)+'</span>'+bookmarkIndicator(article.id)+'</a><button type="button" class="sidebar-read-toggle" data-nav-read-toggle="'+article.id+'" aria-pressed="'+String(read)+'" aria-label="'+escape((read?'إلغاء تعليم المقال كمقروء: ':'تعليم المقال كمقروء: ')+article.title)+'" title="'+(read?'إلغاء علامة القراءة':'تعليم كمقروء')+'"><span class="nav-status-icon" aria-hidden="true">'+(read?'✓':'○')+'</span></button></li>';
+    return '<li class="folder-entry"><a class="folder-article'+(article.id===options.currentId?' current-article':'')+'" data-nav-article="'+article.id+'" href="'+articleHref(article,searchQuery,readingFilter)+'"'+(article.id===options.currentId?' aria-current="page"':'')+'><span class="folder-article-title">'+escape(article.title)+'</span>'+bookmarkIndicator(article.id)+'</a><button type="button" class="sidebar-read-toggle" data-nav-read-toggle="'+article.id+'" aria-pressed="'+String(read)+'" aria-label="'+escape((read?'إلغاء تعليم المقال كمقروء: ':'تعليم المقال كمقروء: ')+article.title)+'" title="'+(read?'إلغاء علامة القراءة':'تعليم كمقروء')+'"><span class="nav-status-icon" aria-hidden="true">'+(read?'✓':'○')+'</span></button></li>';
    }).join('');
   }
   function fill(category){const node=groupNodes.get(category);node.list.innerHTML=articleList(category);node.filled=true;}
@@ -135,10 +140,11 @@
    if(expanded.has(category))setExpanded(category,true);
   });
   function selectCategory(value,expand=true){const changed=activeCategory!==value;activeCategory=value;root.querySelectorAll('[data-cat]').forEach(button=>{const active=button.dataset.cat===value;button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active));});if(expand&&changed&&value&&groupNodes.has(value)&&!isFiltering()){setExpanded(value,true);saveView();}}
-  function viewKey(){return sort+':'+normalize(searchQuery).replace(/\s+/g,' ').trim()+(readingFilter==='all'?'':'|reading='+readingFilter);}
+  function viewKey(){return sort+':'+normalize(searchQuery).replace(/\s+/g,' ').trim()+(readingFilter==='all'?'':'|reading='+readingFilter)+(window.matchMedia('(max-width:680px)').matches?'|drawer-folders':'');}
+  function scrollSurface(){return root;}
   function currentAnchor(){
-   const bounds=root.getBoundingClientRect();
-   const candidates=[...root.querySelectorAll('.folder-row,.folder-article')].filter(element=>element.getClientRects().length&&element.getBoundingClientRect().bottom>bounds.top+1);
+   const bounds=scrollSurface().getBoundingClientRect();
+   const candidates=[...root.querySelectorAll('.folder-row,.folder-article')].filter(element=>element.getClientRects().length&&element.getBoundingClientRect().bottom>bounds.top+1&&element.getBoundingClientRect().top<bounds.bottom);
    const element=candidates.find(element=>element.matches('.folder-article')&&element.getBoundingClientRect().top>=bounds.top+44)||candidates.find(element=>element.getBoundingClientRect().top>=bounds.top-1)||candidates[0];
    if(!element)return null;
    return {article:element.dataset.navArticle||null,category:element.closest('[data-folder]')?.dataset.folder||null,offset:element.getBoundingClientRect().top-bounds.top};
@@ -148,32 +154,33 @@
    clearTimeout(saveTimer);
    const key=viewKey(),previous=state.views[key]||{};
    const open=groups.filter(category=>groupNodes.get(category).toggle.getAttribute('aria-expanded')==='true');
-   const position=root.clientHeight>0?{scrollTop:root.scrollTop,anchor:currentAnchor()}:{};
+   const surface=scrollSurface(),position=surface.clientHeight>0?{scrollTop:surface.scrollTop,anchor:currentAnchor()}:{};
    state.readFilter=readingFilter;state.expanded=[...expanded];state.views[key]={...previous,...position,open,visible:groups.filter(category=>!groupNodes.get(category).folder.hidden),updated:Date.now()};
    if(panel)state.panels[panelStateKey(panel)]=panel.open;
    const keys=Object.keys(state.views).sort((a,b)=>(state.views[b].updated||0)-(state.views[a].updated||0));keys.slice(18).forEach(key=>delete state.views[key]);
    try{sessionStorage.setItem(navigationStateKey,JSON.stringify(state));}catch{}
   }
   function restorePosition(snapshot){
-   if(!root.clientHeight){pendingPosition=snapshot||null;return;}
+   const surface=scrollSurface();
+   if(!surface.clientHeight){pendingPosition=snapshot||null;return;}
    restoring=true;pendingPosition=null;
    if(snapshot?.focusCurrent){
     const link=root.querySelector('[aria-current="page"]');
     if(link?.getClientRects().length){
      const heading=groupNodes.get(current.category).toggle.clientHeight;
-     root.scrollTop+=link.getBoundingClientRect().top-root.getBoundingClientRect().top-heading-Math.max(0,(root.clientHeight-heading-link.clientHeight)/2);
+     surface.scrollTop+=link.getBoundingClientRect().top-surface.getBoundingClientRect().top-heading-Math.max(0,(surface.clientHeight-heading-link.clientHeight)/2);
     }
    }else if(snapshot&&Number.isFinite(snapshot.scrollTop)){
-    root.scrollTop=Math.max(0,snapshot.scrollTop);
+    surface.scrollTop=Math.max(0,snapshot.scrollTop);
     const anchor=snapshot.anchor;
     let element;
     if(anchor?.article&&/^[a-f0-9]{16}$/.test(anchor.article))element=root.querySelector('[data-nav-article="'+anchor.article+'"]');
     else if(anchor?.category)element=groupNodes.get(anchor.category)?.toggle;
-    if(element?.getClientRects().length&&Number.isFinite(anchor.offset))root.scrollTop+=element.getBoundingClientRect().top-root.getBoundingClientRect().top-anchor.offset;
-   }else if(!isFiltering()){
+    if(element?.getClientRects().length&&Number.isFinite(anchor.offset))surface.scrollTop+=element.getBoundingClientRect().top-surface.getBoundingClientRect().top-anchor.offset;
+   }else if(surface===root&&!isFiltering()){
     const link=root.querySelector('[aria-current="page"]');
-    if(link?.getClientRects().length)root.scrollTop+=link.getBoundingClientRect().top-root.getBoundingClientRect().top-root.clientHeight/2+link.clientHeight/2;
-   }else root.scrollTop=0;
+    if(link?.getClientRects().length)surface.scrollTop+=link.getBoundingClientRect().top-surface.getBoundingClientRect().top-surface.clientHeight/2+link.clientHeight/2;
+   }else if(surface===root)surface.scrollTop=0;
    requestAnimationFrame(()=>{restoring=false;});
   }
   function restoreView(snapshot=state.views[viewKey()]){
@@ -191,7 +198,7 @@
   function nextLinks(){
    const target=document.getElementById('article-neighbours');if(!target||!current)return;
    const members=(readingFilter==='bookmarked'?matchingMembers(current.category):articles.filter(a=>a.category===current.category)).sort((a,b)=>compare(a,b,sort)),index=members.findIndex(a=>a.id===current.id);
-   const link=(article,label)=>article?'<a href="'+articleHref(article,sort,readingFilter==='bookmarked'?searchQuery:'',readingFilter==='bookmarked'?readingFilter:undefined)+'"><small>'+label+'</small><span>'+escape(article.title)+'</span></a>':'<span class="neighbour-boundary">'+(label==='المقال السابق'?'أول مقال في القسم':'آخر مقال في القسم')+'</span>';
+   const link=(article,label)=>article?'<a href="'+articleHref(article,readingFilter==='bookmarked'?searchQuery:'',readingFilter==='bookmarked'?readingFilter:undefined)+'"><small>'+label+'</small><span>'+escape(article.title)+'</span></a>':'<span class="neighbour-boundary">'+(label==='المقال السابق'?'أول مقال في القسم':'آخر مقال في القسم')+'</span>';
    target.innerHTML='<p>'+escape(current.category)+' · '+labels[modes.indexOf(sort)]+' · '+(index>=0?ar.format(index+1)+' من '+ar.format(members.length):ar.format(members.length)+' من المحفوظات')+'</p><div>'+link(members[index-1],'المقال السابق')+link(members[index+1],'المقال التالي')+'</div>';
   }
   const empty=document.createElement('p');empty.className='folder-search-empty';empty.hidden=true;empty.textContent='جرّب كلمة أخرى أو امسح البحث لعرض كل الأقسام.';root.append(empty);
@@ -208,7 +215,10 @@
    const all=root.querySelector('.all-articles');if(all)all.hidden=isFiltering();
    empty.hidden=total>0;
    clearSearch.hidden=searchInput.value.length===0;
+   searchBox.classList.toggle('has-title-query',Boolean(searchQuery));
+   searchBox.classList.toggle('is-filtered',isFiltering());
    searchStatus.textContent=isFiltering()?(total?ar.format(total)+' نتيجة في '+ar.format(sections)+(sections===1?' قسم':' أقسام'):searchTerms.length?'لا توجد عناوين مطابقة.':readingFilter==='bookmarked'?'لا توجد مقالات محفوظة بعد.':readingFilter==='read'?'لا توجد مقالات مقروءة بعد.':'كل المقالات مقروءة.'):'البحث في عناوين جميع الأقسام';
+   searchStatus.hidden=!isFiltering();
    empty.textContent=searchTerms.length?'جرّب كلمة أخرى أو غيّر اختيار عرض المقالات.':readingFilter==='bookmarked'?'احفظ المقال من داخله ليظهر هنا، أو اختر كل المقالات.':readingFilter==='read'?'علّم المقالات التي قرأتها لتظهر هنا، أو اختر كل المقالات.':'اختر كل المقالات لعرض المكتبة كاملة.';
    restoreView(snapshot);
   }
@@ -225,8 +235,9 @@
   }
   sidebarFilter.addEventListener('change',()=>setReadingFilter(sidebarFilter.value));
   searchInput.addEventListener('input',()=>setSearch(searchInput.value));
-  clearSearch.addEventListener('click',()=>{searchInput.value='';setSearch('');searchInput.focus();});
-  searchInput.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();searchInput.value='';setSearch('');}});
+  function focusSearch(){const global=document.getElementById('article-search-query');(window.matchMedia('(max-width:680px)').matches&&!searchInput.value&&global?global:searchInput).focus();}
+  clearSearch.addEventListener('click',()=>{searchInput.value='';setSearch('');focusSearch();});
+  searchInput.addEventListener('keydown',event=>{if(event.key==='Escape'&&searchInput.value){event.preventDefault();event.stopPropagation();searchInput.value='';setSearch('');focusSearch();}});
   function setSort(value){saveView();ready=false;sort=validMode(value);groupNodes.forEach((node,category)=>{if(!node.list.hidden)fill(category);else node.filled=false;});nextLinks();restoreView();}
 
   function syncSidebarReading(){
@@ -270,36 +281,56 @@
   };
   root.addEventListener('click',onReadClick);
   selectCategory(activeCategory);nextLinks();searchInput.value=initialQuery;setSearch(searchInput.value);
-  const onScroll=()=>{if(ready&&!restoring){clearTimeout(saveTimer);saveTimer=setTimeout(saveView,80);}};
+  const quickSearchMode=window.matchMedia('(max-width:680px)');
+  const quickSearchLabel=searchBox.querySelector('label'),quickSearchField=searchBox.querySelector('.folder-search');
+  function syncQuickSearch(){
+   if(quickSearchMode.matches)searchBox.prepend(quickSearchLabel,quickSearchField);
+   else{
+    if(searchInput.value){searchInput.value='';setSearch('');}
+    quickSearchLabel.remove();quickSearchField.remove();
+   }
+  }
+  quickSearchMode.addEventListener('change',syncQuickSearch);syncQuickSearch();
+  const onScroll=event=>{if(event.target===scrollSurface()&&ready&&!restoring){clearTimeout(saveTimer);saveTimer=setTimeout(saveView,80);}};
   const onToggle=()=>{if(panel.open){const snapshot=focusCurrentOnPanelOpen?{focusCurrent:true}:pendingPosition||state.views[viewKey()];focusCurrentOnPanelOpen=false;requestAnimationFrame(()=>{restorePosition(snapshot);requestAnimationFrame(saveView);});}else saveView();};
   const onPageHide=()=>saveView();
   const onPageShow=event=>{if(event.persisted){state=readNavigationState();focusCurrentOnRestore=Boolean(current);focusCurrentOnPanelOpen=Boolean(current);if(panel)panel.open=current&&!window.matchMedia('(max-width:1000px)').matches?true:restoredPanelOpen(panel,state);restoreView();}};
   root.addEventListener('scroll',onScroll,{passive:true});
+  const drawerScroller=document.getElementById('sections-drawer');
+  drawerScroller?.addEventListener('scroll',onScroll,{passive:true});
+  drawerScroller?.addEventListener('library:sections-closing',saveView);
   root.addEventListener('click',event=>{if(event.target.closest('a'))saveView();},true);
   if(panel)panel.addEventListener('toggle',onToggle);
   window.addEventListener('pagehide',onPageHide);window.addEventListener('pageshow',onPageShow);
-  return {setSort,selectCategory,setReadingFilter,destroy(){unsubscribe?.();unsubscribeBookmarks?.();root.removeEventListener('click',onReadClick);clearTimeout(saveTimer);root.removeEventListener('scroll',onScroll);if(panel)panel.removeEventListener('toggle',onToggle);window.removeEventListener('pagehide',onPageHide);window.removeEventListener('pageshow',onPageShow);searchBox.remove();}};
+  return {setSort,selectCategory,setReadingFilter,destroy(){unsubscribe?.();unsubscribeBookmarks?.();quickSearchMode.removeEventListener('change',syncQuickSearch);root.removeEventListener('click',onReadClick);clearTimeout(saveTimer);root.removeEventListener('scroll',onScroll);drawerScroller?.removeEventListener('scroll',onScroll);drawerScroller?.removeEventListener('library:sections-closing',saveView);if(panel)panel.removeEventListener('toggle',onToggle);window.removeEventListener('pagehide',onPageHide);window.removeEventListener('pageshow',onPageShow);searchBox.remove();}};
 
  }
  window.ArticleNavigator={create,compare,articleHref};
  const root=document.getElementById('article-folders');if(!root)return;
  const selector=document.getElementById('navigation-sort'),panel=document.querySelector('.article-navigation');
  const requested=new URLSearchParams(location.search).get('nav-sort');
- let saved;try{saved=localStorage.getItem('egyptian-industrial-library:navigation-sort:v1');}catch{}
- let sort=validMode(requested||saved);selector.value=sort;
+ let sort=window.LibraryUI.getSort(requested);selector.value=sort;
+ window.LibraryUI.setSort(sort);
+ let navigation;
+ window.addEventListener('pageshow',event=>{
+  requestAnimationFrame(()=>{
+   const latest=event.persisted?window.LibraryUI.getSort():sort,changed=latest!==sort;
+   sort=window.LibraryUI.setSort(latest);selector.value=sort;
+   if(changed)navigation?.setSort(sort);
+  });
+ });
 
- fetch(sitePath('navigation-index.json')).then(r=>{if(!r.ok)throw Error();return r.json();}).then(articles=>{
+ window.LibraryUI.articles().then(articles=>{
   const nav=create(root,articles,{sort,currentId:document.body.dataset.articleId,query:new URLSearchParams(location.search).get('nav-q')||'',readingFilter:new URLSearchParams(location.search).get('nav-reading'),onFilter:filter=>{
    const params=new URLSearchParams(location.search);if(filter==='all')params.delete('nav-reading');else params.set('nav-reading',filter);history.replaceState(null,'',location.pathname+(params.size?'?'+params:'')+location.hash);
   },onSearch:query=>{
    const params=new URLSearchParams(location.search);if(query)params.set('nav-q',query);else params.delete('nav-q');history.replaceState(null,'',location.pathname+(params.size?'?'+params:'')+location.hash);
   }});
+  navigation=nav;selector.value=sort;
   const current=articles.find(a=>a.id===document.body.dataset.articleId);
-  if(current)document.getElementById('navigation-section').textContent='القسم الحالي: '+current.category;
+  if(current){document.getElementById('navigation-section').textContent='القسم الحالي: '+current.category;window.LibraryUI.setCategory(current.category);}
   selector.addEventListener('change',()=>{
-   sort=selector.value;nav.setSort(sort);
-   const params=new URLSearchParams(location.search);params.set('nav-sort',sort);history.replaceState(null,'',location.pathname+'?'+params+location.hash);
-   try{localStorage.setItem('egyptian-industrial-library:navigation-sort:v1',sort);}catch{}
+   sort=window.LibraryUI.setSort(selector.value);nav.setSort(sort);
   });
   window.LibraryLoading?.done('navigation');
  }).catch(()=>{root.textContent='تعذّر تحميل قائمة المقالات. ';const link=document.createElement('a');link.href=siteRoot.pathname;link.textContent='فتح فهرس المكتبة';root.append(link);window.LibraryLoading?.fail('تعذّر تحميل قائمة المقالات. جرّب مرة أخرى.');});

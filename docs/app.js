@@ -17,13 +17,6 @@ if(!isCollectionPage&&location.hash==='#reading-progress')location.replace(libra
 function updateReadCount(count){const counter=$('#read-total');if(counter)counter.textContent=ar.format(count);}
 updateReadCount(Object.keys(progress.entries()).length);
 const params=new URLSearchParams(location.search);
-const displayOptions=document.querySelector('.display-options');
-if(displayOptions){
- const compactDisplay=window.matchMedia('(max-width:680px)');
- const syncDisplayMode=()=>{if(compactDisplay.matches){let saved;try{saved=sessionStorage.getItem('egyptian-industrial-library:display-options:v1');}catch{}displayOptions.open=saved==='open';}else displayOptions.open=true;};
- syncDisplayMode();if(compactDisplay.addEventListener)compactDisplay.addEventListener('change',syncDisplayMode);else compactDisplay.addListener(syncDisplayMode);
- displayOptions.addEventListener('toggle',()=>{if(compactDisplay.matches){try{sessionStorage.setItem('egyptian-industrial-library:display-options:v1',displayOptions.open?'open':'closed');}catch{}}});
-}
 
 // Cards use only the small catalog. Full-content search runs separately.
 let contentIndexURL,excerptPrefix,enginePromise,contentSearch={key:null,ids:null,error:false};
@@ -132,8 +125,8 @@ let readingFilter=isReadingPage?'read':isBookmarksPage?'all':params.get('reading
 if(!['all','read','unread'].includes(readingFilter))readingFilter='all';
 let pageSize=Number(params.get('size'))||20;
 if(![20,50,100].includes(pageSize))pageSize=20;
-let sort=params.get('sort')||'newest';
-if(!['title','title-desc','short','long','newest','oldest'].includes(sort))sort='newest';
+let sort=window.LibraryUI.getSort(params.get('sort'));
+window.LibraryUI.setSort(sort);
 $('#page-size').value=String(pageSize);$('#sort').value=sort;
 if($('#query'))$('#query').value=query;
 if($('#reading-filter'))$('#reading-filter').value=readingFilter;
@@ -208,13 +201,14 @@ function draw({expandCategory=true}={}){
   draw({expandCategory:false});$('#count').focus({preventScroll:true});
  };
  $('#cards').setAttribute('aria-busy',String(waiting&&!contentSearch.error));
- $('#cards').innerHTML=waiting?`<div class="empty search-loading" role="status"><p>${contentSearch.error?'تعذّر تجهيز البحث. أعد المحاولة.':'جارٍ البحث في محتوى المقالات…'}</p>${contentSearch.error?'<button type="button" id="retry-content-search">إعادة المحاولة</button>':''}</div>`:matches.slice((page-1)*pageSize,page*pageSize).map(article=>`<article class="card${progress.has(article.id)?' is-read':''}" data-article-id="${article.id}" data-published="${article.publicationDate||''}"><a class="card-link" href="articles/${article.id}.html?nav-sort=${sort}"><div class="card-top"><span>${escapeHTML(article.category)}</span><span>↖</span></div><h3>${escapeHTML(article.title)}</h3><div class="card-date">${article.publicationDate?`<time datetime="${article.publicationDate}">${dateLabel(article)}</time>`:dateLabel(article)}</div><p${article.excerpt===undefined?' class="excerpt-pending" aria-hidden="true"':''}>${escapeHTML(article.excerpt||'')}</p><div class="card-bottom">مدة القراءة: ${readingTime(article.minutes)} <span>اقرأ المقال ←</span></div></a><div class="card-tools"><button type="button" class="read-toggle" data-read-toggle data-article-id="${article.id}" aria-pressed="${progress.has(article.id)}">علّم كمقروء</button>${bookmarks.control(article.id,article.title)}</div></article>`).join('')||`<div class="empty"><h3>${isBookmarksPage?(category?'لا توجد مقالات محفوظة في هذا القسم':'لم تحفظ أيّ مقال بعد'):readingFilter==='read'?'لا توجد مقالات مقروءة ضمن هذا الاختيار':'لا توجد نتائج مطابقة'}</h3><p>${isBookmarksPage?'اضغط علامة الحفظ بجوار أيّ مقال لتجده هنا.':readingFilter==='read'?'يمكنك تعليم المقالات التي قرأتها من بطاقاتها أو من داخل المقال.':'جرّب كلمات أقلّ أو اختر قسمًا آخر.'}</p>${isCollectionPage?'<a class="empty-library-link" href="'+libraryRoot.pathname+'#library">تصفّح المكتبة ←</a>':''}</div>`;
+ $('#cards').innerHTML=waiting?`<div class="empty search-loading" role="status"><p>${contentSearch.error?'تعذّر تجهيز البحث. أعد المحاولة.':'جارٍ البحث في محتوى المقالات…'}</p>${contentSearch.error?'<button type="button" id="retry-content-search">إعادة المحاولة</button>':''}</div>`:matches.slice((page-1)*pageSize,page*pageSize).map(article=>`<article class="card${progress.has(article.id)?' is-read':''}" data-article-id="${article.id}" data-published="${article.publicationDate||''}"><a class="card-link" href="articles/${article.id}.html"><div class="card-top"><span>${escapeHTML(article.category)}</span><span>↖</span></div><h3>${escapeHTML(article.title)}</h3><div class="card-date">${article.publicationDate?`<time datetime="${article.publicationDate}">${dateLabel(article)}</time>`:dateLabel(article)}</div><p${article.excerpt===undefined?' class="excerpt-pending" aria-hidden="true"':''}>${escapeHTML(article.excerpt||'')}</p><div class="card-bottom">مدة القراءة: ${readingTime(article.minutes)} <span>اقرأ المقال ←</span></div></a><div class="card-tools"><button type="button" class="read-toggle" data-read-toggle data-article-id="${article.id}" aria-pressed="${progress.has(article.id)}">علّم كمقروء</button>${bookmarks.control(article.id,article.title)}</div></article>`).join('')||`<div class="empty"><h3>${isBookmarksPage?(category?'لا توجد مقالات محفوظة في هذا القسم':'لم تحفظ أيّ مقال بعد'):readingFilter==='read'?'لا توجد مقالات مقروءة ضمن هذا الاختيار':'لا توجد نتائج مطابقة'}</h3><p>${isBookmarksPage?'اضغط علامة الحفظ بجوار أيّ مقال لتجده هنا.':readingFilter==='read'?'يمكنك تعليم المقالات التي قرأتها من بطاقاتها أو من داخل المقال.':'جرّب كلمات أقلّ أو اختر قسمًا آخر.'}</p>${isCollectionPage?'<a class="empty-library-link" href="'+libraryRoot.pathname+'#library">تصفّح المكتبة ←</a>':''}</div>`;
  if($('#retry-content-search'))$('#retry-content-search').onclick=()=>{contentSearch={key:null,ids:null,error:false};draw({expandCategory:false});};
  $('#pages').hidden=Boolean(waiting);
  $('#pages').innerHTML=`<button ${page===1?'disabled':''} id="prev">السابق</button><span>${ar.format(page)} / ${ar.format(max)}</span><button ${page===max?'disabled':''} id="next">التالي</button>`;
  $('#prev').onclick=()=>{page--;draw();$('#library').scrollIntoView();};$('#next').onclick=()=>{page++;draw();$('#library').scrollIntoView();};
  document.querySelectorAll('[data-cat]').forEach(button=>{button.classList.toggle('active',button.dataset.cat===category);button.setAttribute('aria-pressed',button.dataset.cat===category);});
  folderNavigation?.selectCategory(category,expandCategory);
+ window.LibraryUI.setCategory(category);
  document.querySelectorAll('[data-reading-category]').forEach(button=>{const active=button.dataset.readingCategory===category;button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active));});
  const p=new URLSearchParams();if(category)p.set('category',category);if(query){p.set('q',query);if(searchScope==='title')p.set('scope','title');}if(pageSize!==20)p.set('size',pageSize);if(sort!=='newest')p.set('sort',sort);if(!isCollectionPage&&readingFilter!=='all')p.set('reading',readingFilter);
  history.replaceState(null,'',location.pathname+(p.size?'?'+p:'')+location.hash);
@@ -264,7 +258,7 @@ Promise.resolve().then(()=>{
  articles.forEach(article=>articlesById.set(article.id,article));
  const categories=[...new Set(articles.map(article=>article.category))].sort((a,b)=>a.localeCompare(b,'ar'));
  if(!categories.includes(category))category='';
- if($('#categories'))folderNavigation=window.ArticleNavigator.create($('#categories'),articles,{categoriesOnly:true,activeCategory:category,onCategory:value=>{category=value;page=1;if(query||$('#query')?.value)clearLibrarySearch();else draw({expandCategory:false});}});
+ if($('#categories'))folderNavigation=window.ArticleNavigator.create($('#categories'),articles,{categoriesOnly:true,activeCategory:category,onCategory:value=>{category=value;page=1;if(query||$('#query')?.value)clearLibrarySearch();else draw({expandCategory:false});window.LibraryUI.revealCategory();}});
  renderProgress();draw();warmContentSearch();
  if(!isCollectionPage)contentEngine().then(engine=>engine.warm()).then(()=>window.LibraryLoading?.done('search')).catch(()=>window.LibraryLoading?.fail('تعذّر تجهيز البحث. جرّب مرة أخرى.'));
  if(isBookmarksPage)$('#bookmark-category').disabled=false;
@@ -299,7 +293,7 @@ if(queryInput&&searchForm){
   allTitles.disabled=titleMatches.length===0;
   allTitles.textContent='عرض كل نتائج العناوين ('+ar.format(titleMatches.length)+')';
   panel.querySelector('.suggestions-heading').textContent='اقتراحات من العناوين: '+ar.format(matches.length)+' من '+ar.format(titleMatches.length);
-  list.innerHTML=matches.map((article,i)=>`<a id="search-suggestion-${i}" class="search-suggestion" role="option" aria-selected="false" aria-label="${escapeHTML(article.title+'، '+article.category)}" tabindex="-1" href="articles/${article.id}.html?nav-sort=${sort}"><span class="suggestion-title">${escapeHTML(article.title)}</span><span class="suggestion-category">${escapeHTML(article.category)}</span></a>`).join('')||'<p class="suggestions-empty">لا توجد عناوين مطابقة. جرّب البحث في العنوان والمحتوى.</p>';
+  list.innerHTML=matches.map((article,i)=>`<a id="search-suggestion-${i}" class="search-suggestion" role="option" aria-selected="false" aria-label="${escapeHTML(article.title+'، '+article.category)}" tabindex="-1" href="articles/${article.id}.html"><span class="suggestion-title">${escapeHTML(article.title)}</span><span class="suggestion-category">${escapeHTML(article.category)}</span></a>`).join('')||'<p class="suggestions-empty">لا توجد عناوين مطابقة. جرّب البحث في العنوان والمحتوى.</p>';
   options=[...list.querySelectorAll('[role=option]')];
   panel.hidden=false;fit();queryInput.setAttribute('aria-expanded','true');
   announcement.textContent=matches.length?ar.format(matches.length)+' اقتراحات من العناوين. استخدم الأسهم للاختيار، أو اضغط Enter للبحث في العنوان والمحتوى.':'لا توجد عناوين مطابقة. اضغط Enter للبحث في العنوان والمحتوى.';
@@ -333,7 +327,18 @@ if(queryInput&&searchForm){
  clearLibrarySearch=()=>clearSearch(false);
  $('#clear').onclick=()=>clearSearch(true);
 }
-$('#sort').onchange=()=>{sort=$('#sort').value;page=1;draw();};
+$('#sort').onchange=()=>{sort=window.LibraryUI.setSort($('#sort').value);page=1;draw();};
+window.addEventListener('pageshow',event=>{
+ // Browsers can restore a select's old value after scripts have rendered the list.
+ requestAnimationFrame(()=>{
+  const latest=event.persisted?window.LibraryUI.getSort():sort,changed=latest!==sort;
+  sort=latest;$('#sort').value=sort;$('#page-size').value=String(pageSize);
+  if($('#reading-filter'))$('#reading-filter').value=readingFilter;
+  if($('#bookmark-category'))$('#bookmark-category').value=category;
+  window.LibraryUI.setSort(sort);
+  if(changed){page=1;if(articles.length)draw();}
+ });
+});
 $('#page-size').onchange=()=>{pageSize=Number($('#page-size').value);page=1;draw();};
 if($('#reading-filter'))$('#reading-filter').onchange=()=>{readingFilter=$('#reading-filter').value;page=1;draw();};
 

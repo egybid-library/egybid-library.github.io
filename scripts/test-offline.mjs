@@ -6,6 +6,7 @@ const root=new URL('../docs/',import.meta.url),manifest=JSON.parse(fs.readFileSy
 const hash=data=>createHash('sha256').update(data).digest('hex');
 for(const file of manifest.files){const data=fs.readFileSync(new URL(file.path,root));assert.equal(data.length,file.bytes);assert.equal(hash(data),file.sha256);}
 assert.equal(manifest.articles,1950);
+assert.ok(!manifest.files.some(file=>file.path.startsWith('assets/article-previews/')||/^assets\/library-share/.test(file.path)),'Sharing images must not increase offline downloads');
 assert.equal(manifest.files.filter(f=>/^articles\/[a-f0-9]{16}\.html$/.test(f.path)).length,1950);
 assert.ok(!manifest.files.some(f=>/^originals\/|^(archive|catalog|search-index)\.json$/.test(f.path)));
 const archive=JSON.parse(fs.readFileSync(new URL('archive.json',root)));

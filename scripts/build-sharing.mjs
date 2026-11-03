@@ -13,6 +13,7 @@ const image=new URL('assets/'+images[0],site).href;
 const imageBytes=fs.readFileSync(path.join(root,'assets',images[0]));
 if(imageBytes.readUInt16BE(0)!==0xffd8)throw new Error('Invalid JPEG sharing image');
 const archive=JSON.parse(fs.readFileSync(path.join(root,'archive.json'),'utf8'));
+const articleImages=JSON.parse(fs.readFileSync(path.join(root,'assets/article-previews/manifest.json'),'utf8')).articles;
 const articles=fs.readdirSync(path.join(root,'articles')).filter(name=>/^[a-f0-9]{16}\.html$/.test(name));
 const decode=value=>value.replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos|nbsp);/gi,(_,entity)=>{
  if(entity[0]==='#')return String.fromCodePoint(entity[1].toLowerCase()==='x'?parseInt(entity.slice(2),16):Number(entity.slice(1)));
@@ -40,6 +41,11 @@ for(const page of pages){
  const preview=isArticle?previewById.get(id):{title:name,description:name};
  if(!preview?.title||!preview.description)throw new Error('Missing preview text: '+page);
  const pageTitle=isArticle?preview.title+' | '+name:name;
+ const articleImage=isArticle?articleImages[id]:null;
+ if(isArticle&&articleImage?.title!==preview.title)throw new Error('Generate the article image before building metadata: '+id);
+ const previewImage=isArticle?new URL('assets/article-previews/'+articleImage.file,site).href:image;
+ const imageType=isArticle?'image/png':'image/jpeg';
+ const imageAlt=isArticle?preview.title:name;
  let html=fs.readFileSync(file,'utf8');
  if(!/<head(?:\s|>)/i.test(html))html=html.replace(/(<html\b[^>]*>)/i,'$1<head>');
  if(!/<body(?:\s|>)/i.test(html))html=html.replace(/<p>/,'</head><body><p>').replace('</html>','</body></html>');
@@ -53,9 +59,9 @@ for(const page of pages){
  const tags='<title>'+escape(pageTitle)+'</title>'+
   '<meta name="description" content="'+escape(preview.description)+'">'+
   '<link rel="canonical" href="'+canonical+'">'+
-  Object.entries({'og:site_name':name,'og:title':preview.title,'og:description':preview.description,'og:type':type,'og:url':canonical,'og:locale':'ar_EG','og:image':image,'og:image:secure_url':image,'og:image:type':'image/jpeg','og:image:width':'1200','og:image:height':'630','og:image:alt':name})
+  Object.entries({'og:site_name':name,'og:title':preview.title,'og:description':preview.description,'og:type':type,'og:url':canonical,'og:locale':'ar_EG','og:image':previewImage,'og:image:secure_url':previewImage,'og:image:type':imageType,'og:image:width':'1200','og:image:height':'630','og:image:alt':imageAlt})
    .map(([property,value])=>'<meta property="'+property+'" content="'+escape(value)+'">').join('')+
-  Object.entries({'twitter:card':'summary_large_image','twitter:title':preview.title,'twitter:description':preview.description,'twitter:image':image,'twitter:image:alt':name})
+  Object.entries({'twitter:card':'summary_large_image','twitter:title':preview.title,'twitter:description':preview.description,'twitter:image':previewImage,'twitter:image:alt':imageAlt})
    .map(([key,value])=>'<meta name="'+key+'" content="'+escape(value)+'">').join('');
  // Keep metadata before the loader and scripts so crawlers need no JavaScript.
  head=head.replace(/(<meta name="viewport"[^>]*>)/,'$1'+tags);

@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../docs');
@@ -12,6 +13,8 @@ const escape=value=>value.replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':
 const articlePreviews=new Map();
 const pages=['index.html','reading.html','bookmarks.html','profile.html','reading/index.html','bookmarks/index.html',...ids.flatMap(id=>['articles/'+id+'.html','articles/'+id+'/index.html'])];
 let imageURL;
+const shareImages=JSON.parse(fs.readFileSync(path.join(root,'assets/article-previews/manifest.json'),'utf8'));
+const imageIds=new Set();
 const sample=fs.readFileSync(path.join(root,'articles/000e44292e63576b.html'),'utf8');
 assert.ok(sample.includes('<meta property="og:description" content="في معظم البزانس بتاعتنا، بنسأل سؤال: «بعت بكام السنة اللي فاتت،'),'Use the article opening, including its current punctuation');
 for(const page of pages){
@@ -45,12 +48,30 @@ for(const page of pages){
  assert.equal(metas.get('og:type'),page.startsWith('articles/')?'article':'website');
  const early=head.slice(0,head.indexOf('<script'));
  assert.ok(early.includes('property="og:image"'),'Crawlers must not need JavaScript: '+page);
- imageURL??=metas.get('og:image');assert.equal(metas.get('og:image'),imageURL);
- assert.equal(metas.get('twitter:image'),imageURL);
+ let expectedImage;
+ if(article){
+  const entry=shareImages.articles[id];assert.ok(entry,'Missing article title image: '+id);
+  assert.equal(entry.title,article.title);assert.equal(entry.lines.join(' '),article.title.replace(/\s+/g,' ').trim(),'Image must preserve every title word and number');
+  assert.ok(entry.widths.every(width=>width<=1008.01),'Image title must fit');
+  expectedImage='https://egybid-library.github.io/assets/article-previews/'+entry.file;imageIds.add(id);
+  assert.equal(metas.get('og:image:alt'),escape(article.title));assert.equal(metas.get('twitter:image:alt'),escape(article.title));
+ }else{imageURL??=metas.get('og:image');expectedImage=imageURL;}
+ assert.equal(metas.get('og:image'),expectedImage);assert.equal(metas.get('twitter:image'),expectedImage);
+ assert.equal(metas.get('og:image:secure_url'),expectedImage);
  assert.equal(metas.get('twitter:card'),'summary_large_image');
- assert.equal(metas.get('og:image:type'),'image/jpeg');
+ assert.equal(metas.get('og:image:type'),article?'image/png':'image/jpeg');
  assert.equal(metas.get('og:image:width'),'1200');assert.equal(metas.get('og:image:height'),'630');
 }
+assert.equal(imageIds.size,ids.length);assert.equal(Object.keys(shareImages.articles).length,ids.length);
+let imageBytes=0;
+for(const id of ids){
+ const entry=shareImages.articles[id];assert.match(entry.file,new RegExp('^'+id+'-[a-f0-9]{16}\\.png$'));
+ const data=fs.readFileSync(path.join(root,'assets/article-previews',entry.file));
+ assert.deepEqual([...data.subarray(0,8)],[137,80,78,71,13,10,26,10]);assert.equal(data.readUInt32BE(16),1200);assert.equal(data.readUInt32BE(20),630);
+ assert.equal(data.length,entry.bytes);assert.ok(data.length<150*1024,'Title image must remain small');
+ assert.equal(createHash('sha256').update(data).digest('hex'),entry.sha256);imageBytes+=data.length;
+}
+assert.equal(fs.readdirSync(path.join(root,'assets/article-previews')).filter(name=>name.endsWith('.png')).length,ids.length);
 const image=new URL(imageURL);
 assert.equal(image.origin,'https://egybid-library.github.io');
 const bytes=fs.readFileSync(path.join(root,image.pathname));
@@ -65,4 +86,4 @@ while(offset<bytes.length){
  offset+=length;
 }
 assert.deepEqual(dimensions,[1200,630]);assert.ok(bytes.length<100*1024,'Sharing image must remain small');
-console.log(`PASS: ${pages.length} pages, including ${ids.length} legacy article URLs; unique canonical URLs, complete preview metadata before JavaScript, article titles and opening excerpts, preserved library identity, and a ${bytes.length}-byte 1200×630 JPEG.`);
+console.log(`PASS: ${pages.length} pages, including ${ids.length} legacy article URLs; unique canonical URLs, complete preview metadata before JavaScript, article titles and opening excerpts, preserved library identity, and ${ids.length} unique 1200×630 title images (${imageBytes} bytes total).`);

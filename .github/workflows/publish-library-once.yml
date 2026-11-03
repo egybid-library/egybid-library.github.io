@@ -11,9 +11,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          fetch-depth: 3
+          fetch-depth: 4
       - name: Verify reviewed publication base
-        run: test "$(git rev-parse HEAD~2)" = "28b7034e7a34a08d02758b87938d97a6adc8afe8"
+        run: test "$(git rev-parse HEAD~3)" = "28b7034e7a34a08d02758b87938d97a6adc8afe8"
       - name: Reproduce the reviewed local version
         run: |
           python3 - <<'PYCODE'

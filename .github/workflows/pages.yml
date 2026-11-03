@@ -19,10 +19,14 @@ jobs:
       - uses: actions/checkout@v6
       - name: Verify static library links
         run: python3 scripts/verify.py
+      - name: Verify article link previews
+        run: node scripts/test-sharing.mjs
       - name: Check application syntax
         run: |
           node --check docs/app.js
           node --check docs/article-navigation.js
+          node --check docs/library-ui.js
+          node --check docs/article-search.js
           node --check docs/bookmarks.js
           node --check docs/reader.js
       - uses: actions/configure-pages@v5

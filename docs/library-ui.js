@@ -38,6 +38,38 @@
   const tools=document.createElement('div');tools.className='header-tools';tools.setAttribute('role','group');tools.setAttribute('aria-label','أدوات المكتبة');
   [...headerNavigation.children].forEach(child=>{if(child.tagName==='A')pages.append(child);else tools.append(child);});
   headerNavigation.append(pages,tools);
+  const number=new Intl.NumberFormat('ar-EG');
+  const counters=new Map();
+  const destinations=new Map([['','articles'],['index.html','articles'],['reading.html','read'],['bookmarks.html','bookmark']].map(([path,kind])=>[new URL(path,root).pathname,kind]));
+  let knownIds;
+  for(const link of pages.children){
+   const url=new URL(link.href),kind=url.origin===root.origin&&destinations.get(url.pathname);
+   if(!kind)continue;
+   const label=document.createElement('span');label.textContent=link.textContent;
+   const count=document.createElement('span');count.className='header-link-count';count.dataset.headerCount=kind;count.setAttribute('aria-hidden','true');
+   link.replaceChildren(label,count);counters.set(kind,{link,label,count});
+  }
+  function updateCounts(){
+   const countMarks=store=>Object.keys(store?.entries()||{}).filter(id=>!knownIds||knownIds.has(id)).length;
+   const values={articles:knownIds?.size,read:countMarks(window.ReadingProgress),bookmark:countMarks(window.ArticleBookmarks)};
+   for(const [kind,{link,label,count}] of counters){
+    const value=values[kind],text=value===undefined?'…':number.format(value);
+    count.textContent=text;
+    link.setAttribute('aria-label',label.textContent+(value===undefined?'':': '+text));
+   }
+  }
+  updateCounts();
+  window.ReadingProgress?.subscribe(updateCounts);
+  window.ArticleBookmarks?.subscribe(updateCounts);
+  const embedded=document.getElementById('library-data');
+  let metadata;
+  try{metadata=embedded&&JSON.parse(embedded.textContent).articles;}catch{}
+  if(Array.isArray(metadata)){
+   knownIds=new Set(metadata.map(article=>article.id));updateCounts();
+  }else{
+   // Reuse the same request as article navigation; no additional data download.
+   articles().then(metadata=>{knownIds=new Set(metadata.map(article=>article.id));updateCounts();}).catch(()=>{});
+  }
  }
  const panel=document.querySelector('.library-folders,.article-navigation');
  let drawer,trigger,currentLabel,closeSections=()=>{};

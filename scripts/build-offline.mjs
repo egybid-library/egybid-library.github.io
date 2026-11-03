@@ -32,7 +32,15 @@ for(const page of pages){
 }
 const data=JSON.parse(fs.readFileSync(path.join(root,'library-data.json'))),files=[];
 function add(relative){const bytes=fs.readFileSync(path.join(root,relative));files.push({path:relative,bytes:bytes.length,sha256:sha(bytes),downloadBytes:Math.min(bytes.length,gzipSync(bytes).length)});}
-function directory(relative){for(const entry of fs.readdirSync(path.join(root,relative),{withFileTypes:true})){const file=relative+'/'+entry.name;entry.isDirectory()?directory(file):add(file);}}
+function directory(relative){
+ // Sharing art is fetched by messengers, never by the reader or offline download.
+ if(relative==='assets/article-previews')return;
+ for(const entry of fs.readdirSync(path.join(root,relative),{withFileTypes:true})){
+  const file=relative+'/'+entry.name;
+  if(/^assets\/library-share(?:-[a-f0-9]{12})?\.(?:jpg|svg)$/.test(file))continue;
+  entry.isDirectory()?directory(file):add(file);
+ }
+}
 // Current reading pages and every dependency needed for browsing and searching.
 for(const page of pages)add(page);
 for(const name of fs.readdirSync(root))if(name.endsWith('.js')||name==='style.css'||name==='library-data.json'||name==='navigation-index.json')add(name);

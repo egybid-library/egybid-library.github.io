@@ -6,9 +6,15 @@
     "test": "node scripts/test-search.mjs",
     "test:offline": "node scripts/test-offline.mjs",
     "test:sharing": "node scripts/test-sharing.mjs",
-    "test:sync": "node scripts/test-sync.mjs"
+    "test:sync": "node scripts/test-sync.mjs",
+    "build:sharing-images": "node scripts/build-share-images.mjs",
+    "build": "node scripts/build-share-images.mjs && node scripts/build-offline.mjs",
+    "test:sharing-images": "node scripts/test-share-images.mjs"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.5.13"
+    "@electric-sql/pglite": "^0.5.13",
+    "@ibm/plex-sans-arabic": "1.1.0",
+    "@resvg/resvg-js": "2.6.2",
+    "fontkit": "2.0.4"
   }
 }

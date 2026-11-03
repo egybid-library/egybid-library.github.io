@@ -821,7 +821,7 @@
 .site-header nav{gap:18px}
 .site-header .header-page-links{display:flex;align-items:center;gap:8px;min-width:320px;padding:4px;border:1px solid var(--line);border-radius:9px;background:var(--panel-surface)}
 .site-header .header-page-links>a{flex:1;min-width:0;min-height:44px;gap:7px;padding:10px 14px;border:0;border-radius:6px;font-size:14px;line-height:1.6;color:var(--muted);white-space:nowrap}
-.site-header .header-link-count{display:inline-flex;align-items:center;justify-content:center;min-width:1.5em;padding:1px 5px;border-radius:5px;background:var(--paper);color:var(--green);font-size:12px;line-height:1.6;font-variant-numeric:tabular-nums}
+.site-header .header-link-count{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;min-width:1.5em;padding:1px 5px;border-radius:5px;background:var(--paper);color:var(--green);font-size:12px;line-height:1.6;font-variant-numeric:tabular-nums}
 .site-header .header-page-links>a:hover{background:var(--surface-hover,var(--paper));color:var(--ink)}
 .site-header .header-page-links>a[aria-current=page]{background:var(--paper);color:var(--green);box-shadow:0 1px 3px #0001}
 .site-header .header-tools{display:flex;align-items:center;gap:2px}

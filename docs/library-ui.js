@@ -159,14 +159,10 @@
   history.replaceState(null,'',location.pathname+(params.size?'?'+params:'')+location.hash);
  }
 
- // Keep only the most recently viewed article and its reading position on this device.
+ // Shared store also receives positions from the optional device sync.
  const positionKey='egyptian-industrial-library:last-reading:v1';
  function lastReading(){
-  try{
-   const value=JSON.parse(localStorage.getItem(positionKey));
-   if(value?.version===1&&/^[a-f0-9]{16}$/.test(value.id)&&Number.isInteger(value.anchor)&&value.anchor>=-1&&Number.isFinite(value.offset)&&value.offset>=0&&value.offset<=1&&Number.isFinite(value.progress)&&value.progress>=0&&value.progress<=1)return value;
-  }catch{}
-  return null;
+  return window.ReadingPosition?.get()||null;
  }
  if(isArticle){
   const id=document.body.dataset.articleId,section=document.getElementById('organized');
@@ -197,8 +193,8 @@
     if(saved?.id===id&&saved.anchor>=0){anchor=saved.anchor;offset=saved.offset;progress=saved.progress;}
    }
    try{
-    const value=JSON.stringify({version:1,id,anchor,offset,progress});
-    localStorage.setItem(positionKey,value);lastWritten=value;
+    const value={version:1,id,anchor,offset,progress};
+    window.ReadingPosition?.remember(value);lastWritten=JSON.stringify(value);
    }catch{}
   }
   function flush(){clearTimeout(timer);remember(true);}
@@ -247,6 +243,7 @@
   if(Array.isArray(metadata))showContinue();
   else articles().then(data=>{metadata=data;showContinue();}).catch(()=>{});
   window.addEventListener('pageshow',showContinue);
+  window.ReadingPosition?.subscribe(showContinue);
   window.addEventListener('storage',event=>{if(event.key===positionKey||event.key===null)showContinue();});
  }
 })();

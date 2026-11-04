@@ -14,15 +14,15 @@ fs.writeFileSync(syncPath,syncSource);
 const syncVersion=sha(Buffer.concat(['sync.js','sync-core.js','sync-config.js','reading-state.js','bookmarks.js'].map(name=>fs.readFileSync(path.join(root,name))))).slice(0,16);
 const version=sha(fs.readFileSync(path.join(root,'offline.js'))).slice(0,16);
 const pages=['index.html','reading.html','bookmarks.html','profile.html',...fs.readdirSync(path.join(root,'articles')).filter(p=>p.endsWith('.html')).map(p=>'articles/'+p)];
-const sharedVersions=Object.fromEntries(['style.css','theme.js','library-ui.js','article-search.js','article-navigation.js'].map(name=>[name,sha(fs.readFileSync(path.join(root,name))).slice(0,16)]));
+const sharedVersions=Object.fromEntries(['style.css','theme.js','reading-position.js','library-ui.js','article-search.js','article-navigation.js'].map(name=>[name,sha(fs.readFileSync(path.join(root,name))).slice(0,16)]));
 sharedVersions['app.js']=sha(Buffer.concat(['app.js','search-worker.js','search-engine.js'].map(name=>fs.readFileSync(path.join(root,name))))).slice(0,16);
 for(const page of pages){
  const p=path.join(root,page),prefix=page.startsWith('articles/')?'../':'';
  let html=fs.readFileSync(p,'utf8').replace(/<script defer src="(?:\.\.\/)?offline\.js[^\"]*"><\/script>/g,'');
  html=html.replace(/<script type="module" src="(?:\.\.\/)?sync\.js[^\"]*"><\/script>/g,'');
- html=html.replace(/<script (?:defer )?src="(?:\.\.\/)?(?:library-ui|article-search)\.js[^\"]*"><\/script>/g,'');
+ html=html.replace(/<script (?:defer )?src="(?:\.\.\/)?(?:reading-position|library-ui|article-search)\.js[^\"]*"><\/script>/g,'');
  const defer=prefix?'':'defer ';
- html=html.replace(/<script (?:defer )?src="(?:\.\.\/)?(?:article-navigation|app)\.js[^\"]*"><\/script>/,match=>'<script '+defer+'src="'+prefix+'library-ui.js"></script>'+match);
+ html=html.replace(/<script (?:defer )?src="(?:\.\.\/)?(?:article-navigation|app)\.js[^\"]*"><\/script>/,match=>'<script '+defer+'src="'+prefix+'reading-position.js"></script><script '+defer+'src="'+prefix+'library-ui.js"></script>'+match);
  if(prefix)html=html.replace(/<script src="\.\.\/article-navigation\.js[^\"]*"><\/script>/,match=>match+'<script src="../article-search.js"></script>');
  for(const [name,version] of Object.entries(sharedVersions))html=html.replace(new RegExp('((?:src|href)="(?:\\.\\./)?)'+name.replaceAll('.','\\.')+'(?:\\?v=[^" ]+)?','g'),(match,start)=>start+name+'?v='+version);
  for(const name of ['reading-state.js','bookmarks.js'])html=html.replace(new RegExp(name.replaceAll('.','\\.')+'\\?v=[^" ]+','g'),name+'?v='+sha(fs.readFileSync(path.join(root,name))).slice(0,16));

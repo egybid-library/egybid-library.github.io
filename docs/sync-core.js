@@ -134,3 +134,56 @@ export class ReaderSync {
     this.onStatus({phase: 'disconnected'});
   }
 }
+
+export const validPosition = value => value?.version === 1 && validId(value.id) && Number.isInteger(value.anchor) && value.anchor >= -1 && value.anchor <= 100000 && Number.isFinite(value.offset) && value.offset >= 0 && value.offset <= 1 && Number.isFinite(value.progress) && value.progress >= 0 && value.progress <= 1;
+const cleanPosition = value => ({version: 1, id: value.id, anchor: value.anchor, offset: value.offset, progress: value.progress});
+
+// A single checkpoint per linked library. Revision checks keep an old offline
+// device from overwriting reading that it has never seen on another device.
+export class PositionSync {
+  constructor({reader, position, uuid = () => crypto.randomUUID()}) {Object.assign(this, {reader, position, uuid});}
+  cloud(token) {
+    const saved = this.reader.read('position-cloud', null);
+    if (saved?.token !== token) return {token, revision: 0, position: null};
+    if (!Number.isSafeInteger(saved.revision) || saved.revision < 0 || (saved.position !== null && !validPosition(saved.position))) throw Error('storage');
+    return saved;
+  }
+  pendingKey(token) {return 'position-pending:' + token;}
+  pending(token) {
+    const value = this.reader.read(this.pendingKey(token), null);
+    if (value !== null && (!validPosition(value.position) || !Number.isSafeInteger(value.revision) || value.revision < 0 || !/^[a-f0-9-]{36}$/.test(value.op))) throw Error('storage');
+    return value;
+  }
+  capture() {
+    const token = this.reader.token(), position = this.position.get();
+    if (!token || !validPosition(position)) return;
+    const pending = this.pending(token), cloud = this.cloud(token);
+    if (JSON.stringify(pending?.position ?? cloud.position) === JSON.stringify(position)) return;
+    this.reader.write(this.pendingKey(token), {op: this.uuid(), revision: pending?.revision ?? cloud.revision, position: cleanPosition(position)});
+  }
+  async sync() {
+    const token = this.reader.token(); if (!token) return;
+    const cloud = this.cloud(token), pending = this.pending(token);
+    const result = await this.reader.transport('library_sync_position', {p_token: token, p_change: pending});
+    if (this.reader.token() !== token) return;
+    if (!result || !Number.isSafeInteger(result.revision) || result.revision < cloud.revision || (result.position !== null && !validPosition(result.position)) || (result.operation !== null && !/^[a-f0-9-]{36}$/.test(result.operation))) throw Error('response');
+    // Browsers without Web Locks can receive replies in the opposite order.
+    if (this.cloud(token).revision > result.revision) return;
+    const next = {token, revision: result.revision, position: result.position === null ? null : cleanPosition(result.position)};
+    this.reader.write('position-cloud', next);
+    const current = this.pending(token);
+    if (pending && current?.op === pending.op) this.reader.storage.removeItem(syncPrefix + this.pendingKey(token));
+    else if (pending && current && result.operation === pending.op) {
+      // A new scroll happened during the request: it follows our acknowledged
+      // checkpoint, rather than conflicting with our own previous request.
+      this.reader.write(this.pendingKey(token), {...current, revision: result.revision});
+    }
+    if (this.pending(token)) return;
+    if (next.position) this.position.applySync(next.position);
+    else if (this.position.get()) this.capture(); // Seed legacy device positions only when cloud is empty.
+  }
+  disconnect(token) {
+    this.reader.storage.removeItem(syncPrefix + 'position-cloud');
+    if (token) this.reader.storage.removeItem(syncPrefix + this.pendingKey(token));
+  }
+}

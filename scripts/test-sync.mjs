@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import {randomUUID} from 'node:crypto';
 import {PGlite} from '@electric-sql/pglite';
-import {ReaderSync, newSyncToken, parseSyncToken, syncPrefix} from '../docs/sync-core.js';
+import {ReaderSync, PositionSync, newSyncToken, parseSyncToken, syncPrefix} from '../docs/sync-core.js';
 
 const db = new PGlite();
 await db.exec('create role anon; create role authenticated;');
@@ -12,8 +12,8 @@ await db.exec(sql); await db.exec(sql); // Re-running setup must preserve reader
 const rpc = async (name, args) => {
   await db.exec('set role anon');
   try {
-    const query = name === 'library_sync_create' ? 'select public.library_sync_create($1) as data' : 'select public.library_sync_exchange($1, $2, $3::jsonb) as data';
-    const params = name === 'library_sync_create' ? [args.p_token] : [args.p_token, args.p_since, JSON.stringify(args.p_changes)];
+    const query = name === 'library_sync_create' ? 'select public.library_sync_create($1) as data' : name === 'library_sync_position' ? 'select public.library_sync_position($1, $2::jsonb) as data' : 'select public.library_sync_exchange($1, $2, $3::jsonb) as data';
+    const params = name === 'library_sync_create' ? [args.p_token] : name === 'library_sync_position' ? [args.p_token, JSON.stringify(args.p_change)] : [args.p_token, args.p_since, JSON.stringify(args.p_changes)];
     return (await db.query(query, params)).rows[0].data;
   } finally {await db.exec('reset role');}
 };
@@ -43,9 +43,9 @@ await assert.rejects(push([{...op(), active: 'false'}]));
 await assert.rejects(push(Array.from({length: 257}, () => op())));
 await assert.rejects(push([], 999));
 await db.exec('set role anon');
-for (const table of ['libraries', 'marks', 'receipts']) await assert.rejects(db.query('select * from library_sync_private.' + table));
+for (const table of ['libraries', 'marks', 'receipts', 'positions']) await assert.rejects(db.query('select * from library_sync_private.' + table));
 await db.exec('reset role');
-assert.equal((await db.query("select count(*)::int as n from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='library_sync_private' and c.relkind='r' and c.relrowsecurity")).rows[0].n, 3);
+assert.equal((await db.query("select count(*)::int as n from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='library_sync_private' and c.relkind='r' and c.relrowsecurity")).rows[0].n, 4);
 assert.equal((await db.query('select encode(key_hash,\'hex\') as key from library_sync_private.libraries')).rows.some(row => row.key.includes(token)), false);
 
 class Storage {
@@ -115,5 +115,70 @@ for (const [file, global] of [['reading-state.js', 'ReadingProgress'], ['bookmar
   api.toggle(id); api.applySync({[id2]: date}); assert.equal(api.has(id), false); assert.equal(api.has(id2), true);
   api.applySync({[id2]: date}); assert.deepEqual(events, ['toggle', 'sync']);
 }
+// Reading position: real RPCs between independent device stores, without marks.
+function attachPosition(device, value = null) {
+  const slot = 'test:position';
+  if (value) device.storage.setItem(slot, JSON.stringify(value));
+  device.position = {get: () => JSON.parse(device.storage.getItem(slot)), applySync: next => device.storage.setItem(slot, JSON.stringify(next))};
+  device.positions = new PositionSync({reader: device.engine, position: device.position, uuid: randomUUID});
+  device.scroll = next => {device.storage.setItem(slot, JSON.stringify(next)); device.positions.capture();};
+  device.positionRound = async () => {await device.positions.sync(); if (device.positions.pending(device.engine.token())) await device.positions.sync();};
+  return device;
+}
+const at = (article = id, anchor = 6) => ({version: 1, id: article, anchor, offset: 0.25, progress: 0.4});
+const positionKey = newSyncToken(), desktop = attachPosition(make(), at());
+await desktop.engine.connect(positionKey, true); await desktop.positionRound();
+const phone = attachPosition(make(), at(id3, 2));
+await phone.engine.connect(positionKey); await phone.positionRound();
+assert.deepEqual(phone.position.get(), at(), 'Joining device receives cloud checkpoint rather than replacing it with old local reading');
+phone.scroll(at(id2, 12)); await phone.positionRound(); await desktop.positionRound();
+assert.deepEqual(desktop.position.get(), at(id2, 12), 'Article and paragraph synchronize back to desktop');
+assert.deepEqual(desktop.visible, {read: {}, bookmark: {}}, 'Continuing does not mark articles read or saved');
+// Offline queue survives reload. If cloud is unchanged it uploads normally.
+phone.scroll(at(id2, 13)); phone.engine.transport = async () => {throw Error('offline');};
+await assert.rejects(phone.positions.sync());
+const phoneReload = attachPosition(make(phone.storage));
+await phoneReload.positionRound(); await desktop.positionRound(); assert.equal(desktop.position.get().anchor, 13);
+// A stale offline queue cannot erase newer unseen reading from another device.
+phoneReload.scroll(at(id2, 14));
+desktop.scroll(at(id3, 20)); await desktop.positionRound(); await phoneReload.positionRound();
+assert.deepEqual(phoneReload.position.get(), at(id3, 20));
+// Lost reply and retry after newer reading stays idempotent.
+desktop.scroll(at(id3, 21)); desktop.engine.transport = async (name, args) => {await rpc(name, args); throw Error('lost reply');};
+await assert.rejects(desktop.positions.sync()); await phoneReload.positionRound();
+phoneReload.scroll(at(id3, 22)); await phoneReload.positionRound();
+desktop.engine.transport = rpc; await desktop.positionRound(); assert.equal(desktop.position.get().anchor, 22);
+// A new scroll while a request is in flight follows our own accepted checkpoint.
+desktop.scroll(at(id3, 23)); let releasePosition;
+desktop.engine.transport = async (name, args) => {await new Promise(resolve => releasePosition = resolve); return rpc(name, args);};
+const positionFlight = desktop.positions.sync(); await Promise.resolve(); desktop.scroll(at(id3, 24));
+desktop.engine.transport = rpc; releasePosition(); await positionFlight; await desktop.positionRound();
+await phoneReload.positionRound(); assert.equal(phoneReload.position.get().anchor, 24);
+const isolated = attachPosition(make()); await isolated.engine.connect(newSyncToken(), true); await isolated.positionRound();
+assert.equal(isolated.position.get(), null);
+const positionCloud = desktop.storage.getItem(syncPrefix + 'position-cloud');
+desktop.engine.transport = async () => ({revision: 999, operation: null, position: {...at(), offset: 2}});
+await assert.rejects(desktop.positions.sync()); assert.equal(desktop.storage.getItem(syncPrefix + 'position-cloud'), positionCloud);
+const checkpoint = await rpc('library_sync_position', {p_token: positionKey, p_change: null});
+await db.exec(fs.readFileSync(new URL('../supabase/migrations/20261104-reading-position.sql', import.meta.url), 'utf8'));
+assert.deepEqual(await rpc('library_sync_position', {p_token: positionKey, p_change: null}), checkpoint, 'Running the additive migration again preserves existing checkpoints');
+for (const bad of [{...at(), anchor: -2}, {...at(), offset: 2}, {...at(), progress: -0.5}, {...at(), id: '<script>'}, {...at(), anchor: '6'}]) {
+  await assert.rejects(rpc('library_sync_position', {p_token: positionKey, p_change: {op: randomUUID(), revision: checkpoint.revision, position: bad}}));
+}
+await assert.rejects(rpc('library_sync_position', {p_token: newSyncToken(), p_change: null}));
+const savedPosition = phoneReload.position.get(); phoneReload.positions.disconnect(positionKey); phoneReload.engine.disconnect();
+assert.deepEqual(phoneReload.position.get(), savedPosition); assert.equal(phoneReload.storage.getItem(syncPrefix + 'position-cloud'), null);
+// Browser position store: old local checkpoints migrate intact, only local changes queue.
+{
+  const storage = new Storage(), handlers = {}, events = [];
+  storage.setItem('egyptian-industrial-library:last-reading:v1', JSON.stringify(at()));
+  const context = {window: {addEventListener: (name, listener) => handlers[name] = listener}, localStorage: storage, Set, JSON, Number, Error};
+  vm.runInNewContext(fs.readFileSync(new URL('../docs/reading-position.js', import.meta.url), 'utf8'), context);
+  const api = context.window.ReadingPosition; api.subscribe(change => events.push(change.type));
+  assert.equal(api.get().anchor, 6); api.remember(at()); assert.equal(events.length, 0);
+  api.remember(at(id2, 10)); api.applySync(at(id3, 20));
+  assert.deepEqual(events, ['local', 'sync']); assert.equal(api.get().anchor, 20);
+  assert.throws(() => api.remember({...at(), offset: Infinity})); assert.equal(api.get().anchor, 20);
+}
 await db.close();
-console.log('Sync passed: real PostgreSQL RPCs, private tables, isolation, durable offline edits, removal, merge, idempotent retry, in-flight edits, storage failure, and disconnect.');
+console.log('Sync passed: real PostgreSQL RPCs, private tables, isolation, read/bookmark merge and removals, cross-device article/paragraph positions, durable offline edits, stale-device conflicts, idempotent lost-reply retry, in-flight scrolls, migration preservation, storage failure, and disconnect.');

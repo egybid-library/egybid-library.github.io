@@ -158,4 +158,95 @@
   params.delete('nav-sort');
   history.replaceState(null,'',location.pathname+(params.size?'?'+params:'')+location.hash);
  }
+
+ // Keep only the most recently viewed article and its reading position on this device.
+ const positionKey='egyptian-industrial-library:last-reading:v1';
+ function lastReading(){
+  try{
+   const value=JSON.parse(localStorage.getItem(positionKey));
+   if(value?.version===1&&/^[a-f0-9]{16}$/.test(value.id)&&Number.isInteger(value.anchor)&&value.anchor>=-1&&Number.isFinite(value.offset)&&value.offset>=0&&value.offset<=1&&Number.isFinite(value.progress)&&value.progress>=0&&value.progress<=1)return value;
+  }catch{}
+  return null;
+ }
+ if(isArticle){
+  const id=document.body.dataset.articleId,section=document.getElementById('organized');
+  const previous=lastReading();
+  const requestedResume=location.hash==='#continue-reading';
+  const resume=requestedResume&&previous?.id===id;
+  let restoring=resume,timer,lastWritten;
+  const readingLine=()=>Math.min(120,window.innerHeight*.2);
+  function readingBlocks(){
+   const blocks=[...section.querySelectorAll('p,h2,h3,li')].filter(block=>block.tagName!=='LI'||!block.querySelector('p'));
+   return blocks.length?blocks:[...section.children];
+  }
+  function remember(force=false){
+   if(restoring||!section||(!force&&document.visibilityState==='hidden'))return;
+   // Closing an older background tab must not replace a newer article's position.
+   if(force&&JSON.stringify(lastReading())!==lastWritten)return;
+   const line=readingLine(),bounds=section.getBoundingClientRect(),blocks=readingBlocks();
+   let anchor=-1,offset=0,progress=0;
+   if(bounds.top<line&&blocks.length){
+    anchor=blocks.findIndex(block=>block.getBoundingClientRect().bottom>line);
+    if(anchor<0)anchor=blocks.length-1;
+    const block=blocks[anchor].getBoundingClientRect();
+    offset=Math.max(0,Math.min(1,(line-block.top)/Math.max(1,block.height)));
+    progress=Math.max(0,Math.min(1,(line-bounds.top)/Math.max(1,bounds.height)));
+   }else{
+    // Returning to the header to leave the article should retain its last text position.
+    const saved=lastReading();
+    if(saved?.id===id&&saved.anchor>=0){anchor=saved.anchor;offset=saved.offset;progress=saved.progress;}
+   }
+   try{
+    const value=JSON.stringify({version:1,id,anchor,offset,progress});
+    localStorage.setItem(positionKey,value);lastWritten=value;
+   }catch{}
+  }
+  function flush(){clearTimeout(timer);remember(true);}
+  window.addEventListener('scroll',()=>{clearTimeout(timer);timer=setTimeout(()=>remember(),200);},{passive:true});
+  window.addEventListener('pagehide',flush);
+  window.addEventListener('pageshow',event=>{if(event.persisted)remember();});
+  document.addEventListener('visibilitychange',()=>document.visibilityState==='hidden'?flush():remember());
+  const documentReady=document.readyState==='loading'?new Promise(resolve=>document.addEventListener('DOMContentLoaded',resolve,{once:true})):Promise.resolve();
+  if(resume)window.LibraryLoading?.hold('reading-position');
+  documentReady.then(async()=>{
+   // Wait for the real article layout, including fonts, before positioning its paragraphs.
+   void document.body.offsetWidth;
+   if(document.fonts)await document.fonts.ready;
+   await new Promise(requestAnimationFrame);
+   if(resume&&section){
+    let top=0;
+    if(previous.anchor>=0){
+     const block=readingBlocks()[previous.anchor];
+     const bounds=(block||section).getBoundingClientRect();
+     top=window.scrollY+bounds.top+bounds.height*(block?previous.offset:previous.progress)-readingLine();
+    }
+    window.scrollTo({top:Math.max(0,top),behavior:'instant'});
+   }
+   if(requestedResume)history.replaceState(null,'',location.pathname+location.search);
+  }).catch(()=>{}).finally(()=>{
+   restoring=false;remember();
+   if(resume)window.LibraryLoading?.done('reading-position');
+  });
+ }else if(document.getElementById('searchform')&&!document.body.dataset.view){
+  let resumeLink;
+  let metadata;
+  try{metadata=JSON.parse(document.getElementById('library-data')?.textContent).articles;}catch{}
+  function showContinue(){
+   const entry=lastReading(),article=entry&&metadata?.find(article=>article.id===entry.id);
+   if(!article){resumeLink?.remove();resumeLink=null;return;}
+   if(!resumeLink){
+    resumeLink=document.createElement('a');resumeLink.className='continue-reading';
+    resumeLink.innerHTML='<span class="continue-reading-copy"><span class="continue-reading-label">متابعة القراءة</span><strong class="continue-reading-title"></strong></span><span class="continue-reading-arrow" aria-hidden="true">←</span>';
+    document.getElementById('library').before(resumeLink);
+   }
+   resumeLink.href=new URL('articles/'+entry.id+'.html',root).pathname+'#continue-reading';
+   resumeLink.querySelector('.continue-reading-title').textContent=article.title;
+   resumeLink.setAttribute('aria-label','متابعة قراءة: '+article.title);
+   resumeLink.title=article.title;
+  }
+  if(Array.isArray(metadata))showContinue();
+  else articles().then(data=>{metadata=data;showContinue();}).catch(()=>{});
+  window.addEventListener('pageshow',showContinue);
+  window.addEventListener('storage',event=>{if(event.key===positionKey||event.key===null)showContinue();});
+ }
 })();

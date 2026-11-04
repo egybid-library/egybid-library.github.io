@@ -614,6 +614,13 @@
 #cards .bookmark-toggle{min-width:40px;min-height:40px;padding:8px}
 #cards .bookmark-toggle svg{width:18px;height:18px;flex-basis:18px}
 @media(max-width:680px){#cards :is(.read-toggle,.bookmark-toggle){min-height:44px}#cards .bookmark-toggle{min-width:44px}}
+.continue-reading{display:flex;align-items:center;justify-content:space-between;gap:16px;width:90%;max-width:1251px;margin:20px auto 0;padding:10px 16px;border:1px solid var(--line);border-radius:8px;background:var(--panel-surface);color:var(--ink);text-decoration:none}
+.continue-reading:hover{border-color:var(--green)}
+.continue-reading-copy{display:flex;flex-direction:column;gap:2px;min-width:0}
+.continue-reading-label{font-size:11px;color:var(--muted)}
+.continue-reading-title{font-size:14px;font-weight:500;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.continue-reading-arrow{font-size:22px;color:var(--green);flex:0 0 auto}
+@media(max-width:680px){.continue-reading{padding:10px 12px;margin-top:16px}.continue-reading-title{font-size:13px}}
 
 /* Instant title suggestions, with an explicit full-text search action. */
 .main-query-field{position:static}

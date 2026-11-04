@@ -19,8 +19,8 @@ updateReadCount(Object.keys(progress.entries()).length);
 const params=new URLSearchParams(location.search);
 
 // Cards use only the small catalog. Full-content search runs separately.
-let contentIndexURL,excerptPrefix,enginePromise,contentSearch={key:null,ids:null,error:false};
-const searchResults=new Map(),searchLookups=new Map(),excerptRequests=new Map(),articlesById=new Map();
+let contentIndexURL,enginePromise,contentSearch={key:null,ids:null,error:false};
+const searchResults=new Map(),searchLookups=new Map();
 function contentEngine(){
  if(enginePromise)return enginePromise;
  enginePromise=(async()=>{
@@ -84,24 +84,6 @@ function warmContentSearch(){
  const start=()=>contentEngine().then(engine=>engine.warm?.()).catch(()=>{});
  input.addEventListener('focus',start,{once:true});
  if(document.activeElement===input)start();
-}
-function hydrateExcerpts(visible){
- if(!excerptPrefix)return Promise.resolve();
- const parts=new Set(visible.filter(a=>a.excerpt===undefined).map(a=>a.excerptPart));
- for(const part of parts){
-  if(excerptRequests.has(part))continue;
-  const request=fetch(new URL(excerptPrefix+part.toString(16).padStart(2,'0')+'.json',libraryRoot)).then(response=>{
-   if(!response.ok)throw new Error('Excerpt unavailable');return response.json();
-  }).then(data=>{
-   for(const [id,excerpt] of Object.entries(data)){const article=articlesById.get(id);if(article)article.excerpt=excerpt;}
-   document.querySelectorAll('#cards .card[data-article-id]').forEach(card=>{
-    const article=articlesById.get(card.dataset.articleId),text=card.querySelector('.card-link>p');
-    if(text&&article?.excerpt!==undefined){text.textContent=article.excerpt;text.classList.remove('excerpt-pending');text.removeAttribute('aria-hidden');}
-   });
-  }).catch(error=>{excerptRequests.delete(part);throw error;});
-  excerptRequests.set(part,request);
- }
- return Promise.all([...parts].map(part=>excerptRequests.get(part)));
 }
 let folderNavigation,pendingSearchReveal=null,searchFeedbackTimer,clearLibrarySearch=()=>{};
 function revealSearchResults(request){
@@ -201,7 +183,7 @@ function draw({expandCategory=true}={}){
   draw({expandCategory:false});$('#count').focus({preventScroll:true});
  };
  $('#cards').setAttribute('aria-busy',String(waiting&&!contentSearch.error));
- $('#cards').innerHTML=waiting?`<div class="empty search-loading" role="status"><p>${contentSearch.error?'تعذّر تجهيز البحث. أعد المحاولة.':'جارٍ البحث في محتوى المقالات…'}</p>${contentSearch.error?'<button type="button" id="retry-content-search">إعادة المحاولة</button>':''}</div>`:matches.slice((page-1)*pageSize,page*pageSize).map(article=>`<article class="card${progress.has(article.id)?' is-read':''}" data-article-id="${article.id}" data-published="${article.publicationDate||''}"><a class="card-link" href="articles/${article.id}.html"><div class="card-top"><span>${escapeHTML(article.category)}</span><span>↖</span></div><h3>${escapeHTML(article.title)}</h3><div class="card-date">${article.publicationDate?`<time datetime="${article.publicationDate}">${dateLabel(article)}</time>`:dateLabel(article)}</div><p${article.excerpt===undefined?' class="excerpt-pending" aria-hidden="true"':''}>${escapeHTML(article.excerpt||'')}</p><div class="card-bottom">مدة القراءة: ${readingTime(article.minutes)} <span>اقرأ المقال ←</span></div></a><div class="card-tools"><button type="button" class="read-toggle" data-read-toggle data-article-id="${article.id}" aria-pressed="${progress.has(article.id)}">علّم كمقروء</button>${bookmarks.control(article.id,article.title)}</div></article>`).join('')||`<div class="empty"><h3>${isBookmarksPage?(category?'لا توجد مقالات محفوظة في هذا القسم':'لم تحفظ أيّ مقال بعد'):readingFilter==='read'?'لا توجد مقالات مقروءة ضمن هذا الاختيار':'لا توجد نتائج مطابقة'}</h3><p>${isBookmarksPage?'اضغط علامة الحفظ بجوار أيّ مقال لتجده هنا.':readingFilter==='read'?'يمكنك تعليم المقالات التي قرأتها من بطاقاتها أو من داخل المقال.':'جرّب كلمات أقلّ أو اختر قسمًا آخر.'}</p>${isCollectionPage?'<a class="empty-library-link" href="'+libraryRoot.pathname+'#library">تصفّح المكتبة ←</a>':''}</div>`;
+ $('#cards').innerHTML=waiting?`<div class="empty search-loading" role="status"><p>${contentSearch.error?'تعذّر تجهيز البحث. أعد المحاولة.':'جارٍ البحث في محتوى المقالات…'}</p>${contentSearch.error?'<button type="button" id="retry-content-search">إعادة المحاولة</button>':''}</div>`:matches.slice((page-1)*pageSize,page*pageSize).map(article=>`<article class="card${progress.has(article.id)?' is-read':''}" data-article-id="${article.id}" data-published="${article.publicationDate||''}"><a class="card-link" href="articles/${article.id}.html"><div class="card-top"><span>${escapeHTML(article.category)}</span><span>↖</span></div><h3>${escapeHTML(article.title)}</h3><div class="card-date">${article.publicationDate?`<time datetime="${article.publicationDate}">${dateLabel(article)}</time>`:dateLabel(article)}<span class="card-duration">مدة القراءة: ${readingTime(article.minutes)}</span></div></a><div class="card-tools"><button type="button" class="read-toggle" data-read-toggle data-article-id="${article.id}" aria-pressed="${progress.has(article.id)}">علّم كمقروء</button>${bookmarks.control(article.id,article.title)}</div></article>`).join('')||`<div class="empty"><h3>${isBookmarksPage?(category?'لا توجد مقالات محفوظة في هذا القسم':'لم تحفظ أيّ مقال بعد'):readingFilter==='read'?'لا توجد مقالات مقروءة ضمن هذا الاختيار':'لا توجد نتائج مطابقة'}</h3><p>${isBookmarksPage?'اضغط علامة الحفظ بجوار أيّ مقال لتجده هنا.':readingFilter==='read'?'يمكنك تعليم المقالات التي قرأتها من بطاقاتها أو من داخل المقال.':'جرّب كلمات أقلّ أو اختر قسمًا آخر.'}</p>${isCollectionPage?'<a class="empty-library-link" href="'+libraryRoot.pathname+'#library">تصفّح المكتبة ←</a>':''}</div>`;
  if($('#retry-content-search'))$('#retry-content-search').onclick=()=>{contentSearch={key:null,ids:null,error:false};draw({expandCategory:false});};
  $('#pages').hidden=Boolean(waiting);
  $('#pages').innerHTML=`<button ${page===1?'disabled':''} id="prev">السابق</button><span>${ar.format(page)} / ${ar.format(max)}</span><button ${page===max?'disabled':''} id="next">التالي</button>`;
@@ -216,10 +198,8 @@ function draw({expandCategory=true}={}){
  document.documentElement.removeAttribute('data-library-pending');
  if(!waiting){
   const reveal=pendingSearchReveal;
-  hydrateExcerpts(matches.slice((page-1)*pageSize,page*pageSize)).then(()=>{
-   window.LibraryLoading?.done('library');
-   if(reveal)revealSearchResults(reveal);
-  }).catch(()=>window.LibraryLoading?.fail('تعذّر تحميل المقالات المعروضة. جرّب مرة أخرى.'));
+  window.LibraryLoading?.done('library');
+  if(reveal)revealSearchResults(reveal);
  }
  else if(contentSearch.error)window.LibraryLoading?.fail('تعذّر تجهيز نتائج البحث. جرّب مرة أخرى.');
 }
@@ -253,9 +233,8 @@ Promise.resolve().then(()=>{
  if(embedded)return JSON.parse(embedded.textContent);
  return fetch(new URL('library-data.json?v=0ae7c535bbbe3ac7',libraryRoot)).then(response=>{if(!response.ok)throw Error();return response.json();});
 }).then(data=>{
- contentIndexURL=data.searchIndex;excerptPrefix=data.excerptPrefix;
- articles=data.articles.map((article,i)=>({...article,excerpt:data.initialExcerpts?.[article.id],excerptPart:Math.floor(i/64),searchTitle:norm(article.title)}));
- articles.forEach(article=>articlesById.set(article.id,article));
+ contentIndexURL=data.searchIndex;
+ articles=data.articles.map(article=>({...article,searchTitle:norm(article.title)}));
  const categories=[...new Set(articles.map(article=>article.category))].sort((a,b)=>a.localeCompare(b,'ar'));
  if(!categories.includes(category))category='';
  if($('#categories'))folderNavigation=window.ArticleNavigator.create($('#categories'),articles,{sort,readingFilter:'all',showFilter:false,startCollapsed:true,activeCategory:category,onCategory:value=>{category=value;page=1;if(query||$('#query')?.value)clearLibrarySearch();else draw({expandCategory:false});window.LibraryUI.revealCategory();}});

@@ -604,6 +604,16 @@
 /* Cards render from the document; excerpts on other pages fill in independently. */
 :root[data-library-pending] :is(#cards,#count){visibility:hidden}
 .card-link>p.excerpt-pending{min-height:4em;border-radius:4px;background:linear-gradient(var(--line),var(--line)) right 0 top 12px/85% 7px no-repeat,linear-gradient(var(--line),var(--line)) right 0 top 30px/65% 7px no-repeat;opacity:.4}
+#cards .card{min-height:0}
+#cards .card-link{padding:14px 16px 8px}
+#cards .card h3{font-size:22px;line-height:1.45;margin:8px 0}
+#cards .card-date{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;margin:0;font-size:11px}
+#cards .card-duration{white-space:nowrap}
+#cards .card-tools{padding:0 16px 10px;gap:8px}
+#cards .read-toggle{min-height:40px;padding:6px 10px;font-size:12px}
+#cards .bookmark-toggle{min-width:40px;min-height:40px;padding:8px}
+#cards .bookmark-toggle svg{width:18px;height:18px;flex-basis:18px}
+@media(max-width:680px){#cards :is(.read-toggle,.bookmark-toggle){min-height:44px}#cards .bookmark-toggle{min-width:44px}}
 
 /* Instant title suggestions, with an explicit full-text search action. */
 .main-query-field{position:static}
@@ -768,6 +778,7 @@
 .article-search-more{flex-shrink:0;align-self:center;min-height:44px;margin:0 20px 14px;padding:8px 18px;border:1px solid var(--control-border,var(--line));border-radius:7px;background:transparent;color:var(--green);font:inherit;font-size:13px;cursor:pointer}
 .results-count{scroll-margin-block-start:20px}
 @media(max-width:680px){
+ .site-header .brand{font-size:14px;font-weight:500}
  .mobile-sections-control{display:block}
  .site-header.has-mobile-sections{display:grid;grid-template-columns:44px minmax(0,1fr);grid-template-areas:"menu brand" "navigation navigation";align-items:center;gap:12px 10px}
  .site-header.has-mobile-sections>:is(h1,.brand){grid-area:brand;min-width:0}
@@ -796,7 +807,7 @@
 @media(max-width:680px){
  .site-header.has-mobile-sections{grid-template-columns:44px minmax(0,1fr) 44px;grid-template-areas:"menu brand search" "navigation navigation navigation";gap:12px 6px}
  .site-header.has-mobile-sections>:is(h1,.brand){margin:0;text-align:center;justify-content:center}
- .site-header.has-mobile-sections .brand{justify-content:center;font-size:16px;line-height:1.7;text-align:center}
+ .site-header.has-mobile-sections .brand{justify-content:center;font-size:14px;font-weight:500;line-height:1.7;text-align:center}
  .site-header.has-mobile-sections .brand-icon{display:none}
  .site-header .mobile-library-search{grid-area:search;display:flex;align-items:center;justify-content:center;width:44px;height:44px;padding:10px;border:0;border-radius:7px;background:transparent;color:var(--green);cursor:pointer}
  .mobile-library-search svg{width:24px;height:24px}

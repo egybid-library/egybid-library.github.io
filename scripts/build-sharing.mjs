@@ -55,10 +55,12 @@ for(const page of pages){
  let head=html.slice(0,boundary),body=html.slice(boundary);
  head=head.replace(/<title>[^<]*<\/title>/g,'')
   .replace(/<meta\b[^>]*(?:name="(?:description|twitter:[^"]+)"|property="og:[^"]+")[^>]*>/g,'')
-  .replace(/<link\b[^>]*rel="canonical"[^>]*>/g,'');
+  .replace(/<link\b[^>]*rel="(?:canonical|icon)"[^>]*>/g,'');
+ const favicon=path.posix.relative(path.posix.dirname(page),'assets/favicon.png');
  const tags='<title>'+escape(pageTitle)+'</title>'+
   '<meta name="description" content="'+escape(preview.description)+'">'+
   '<link rel="canonical" href="'+canonical+'">'+
+  '<link rel="icon" type="image/png" sizes="48x48" href="'+favicon+'">'+
   Object.entries({'og:site_name':name,'og:title':preview.title,'og:description':preview.description,'og:type':type,'og:url':canonical,'og:locale':'ar_EG','og:image':previewImage,'og:image:secure_url':previewImage,'og:image:type':imageType,'og:image:width':'1200','og:image:height':'630','og:image:alt':imageAlt})
    .map(([property,value])=>'<meta property="'+property+'" content="'+escape(value)+'">').join('')+
   Object.entries({'twitter:card':'summary_large_image','twitter:title':preview.title,'twitter:description':preview.description,'twitter:image':previewImage,'twitter:image:alt':imageAlt})
